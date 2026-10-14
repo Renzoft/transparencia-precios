@@ -85,6 +85,51 @@ class ModoDesplazamiento {
   }
 }
 
+/// Un mercado en el resultado del costo total (MercadoComparado del contrato).
+class MercadoComparado {
+  MercadoComparado({
+    required this.id,
+    required this.nombre,
+    required this.distrito,
+    required this.distanciaKm,
+    required this.costoProductos,
+    required this.costoDesplazamiento,
+    required this.costoTotal,
+    required this.sinPrecio,
+    this.duracionMin,
+  });
+
+  final int id;
+  final String nombre;
+  final String distrito;
+  final double distanciaKm;
+  final int? duracionMin;          // no viene si la distancia es en línea recta
+  final double costoProductos;
+  final double costoDesplazamiento;  // ya es de ida y vuelta (RN07)
+  final double costoTotal;
+  final List<int> sinPrecio;       // variedades de la lista sin precio en este mercado
+
+  bool get listaCompleta => sinPrecio.isEmpty;
+
+  factory MercadoComparado.desdeJson(Map<String, dynamic> j) => MercadoComparado(
+        id: j['id_mercado'] as int,
+        nombre: j['nombre'] as String,
+        distrito: j['distrito'] as String,
+        distanciaKm: (j['distancia_km'] as num).toDouble(),
+        duracionMin: j['duracion_min'] as int?,
+        costoProductos: (j['costo_productos'] as num).toDouble(),
+        costoDesplazamiento: (j['costo_desplazamiento'] as num).toDouble(),
+        costoTotal: (j['costo_total'] as num).toDouble(),
+        sinPrecio: [...(j['sin_precio'] as List).cast<int>()],
+      );
+}
+
+class Comparacion {
+  Comparacion(this.distanciaAproximada, this.mercados);
+  final bool distanciaAproximada;
+  final List<MercadoComparado> mercados;   // ya ordenados por la API
+}
+
 class ClienteApi {
   ClienteApi({String? base, http.Client? cliente})
       : _base = (base ?? urlApi).replaceAll(RegExp(r'/+$'), ''),
@@ -96,10 +141,12 @@ class ClienteApi {
   Uri _url(String ruta, [Map<String, String>? consulta]) =>
       Uri.parse('$_base/api/v1$ruta').replace(queryParameters: consulta);
 
-  Future<dynamic> _get(Uri url) async {
+  Future<dynamic> _get(Uri url) => _enviar(() => _http.get(url));
+
+  Future<dynamic> _enviar(Future<http.Response> Function() peticion) async {
     final http.Response r;
     try {
-      r = await _http.get(url).timeout(const Duration(seconds: 15));
+      r = await peticion().timeout(const Duration(seconds: 15));
     } catch (_) {
       throw ErrorApi(0, 'SIN_CONEXION',
           'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.');
@@ -127,5 +174,30 @@ class ClienteApi {
   Future<List<ModoDesplazamiento>> listarModos() async {
     final j = await _get(_url('/modos-desplazamiento')) as List;
     return [for (final m in j) ModoDesplazamiento.desdeJson(m as Map<String, dynamic>)];
+  }
+
+  /// POST /comparaciones (CU05, pasos 9 a 12). La ubicación viaja en el cuerpo y el
+  /// servidor no la guarda (RNF003).
+  Future<Comparacion> comparar({
+    required double latitud,
+    required double longitud,
+    required int idModo,
+    required int radioKm,
+    required List<({int idVariedad, double cantidadKg})> items,
+  }) async {
+    final j = await _enviar(() => _http.post(_url('/comparaciones'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'origen': {'latitud': latitud, 'longitud': longitud},
+          'id_modo_desplazamiento': idModo,
+          'radio_km': radioKm,
+          'items': [
+            for (final i in items) {'id_variedad': i.idVariedad, 'cantidad_kg': i.cantidadKg}
+          ],
+        }))) as Map<String, dynamic>;
+    return Comparacion(j['distancia_aproximada'] as bool, [
+      for (final m in j['mercados'] as List)
+        MercadoComparado.desdeJson(m as Map<String, dynamic>)
+    ]);
   }
 }

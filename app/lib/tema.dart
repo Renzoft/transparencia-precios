@@ -23,6 +23,12 @@ class Colores {
   static const infoSuave = Color(0xFFEFF6FF);
   // El ícono del aviso informativo no usa una variable en Figma; es el azul de su trazo.
   static const info = Color(0xFF2563EB);
+  // Avisos de alerta (distancia aproximada, productos sin precio) y la barra que muestra
+  // la composición del costo en C10.
+  static const alerta = Color(0xFFB45309);
+  static const alertaSuave = Color(0xFFFFFBEB);
+  static const textoAlerta = Color(0xFF92400E);
+  static const barraComparacion = Color(0xFFD9E7DE);
   static const fondo = Color(0xFFF7F8FA);
   static const superficie = Color(0xFFFFFFFF);
   static const borde = Color(0xFFE5E7EB);

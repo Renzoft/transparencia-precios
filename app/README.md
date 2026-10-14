@@ -1,13 +1,14 @@
 # Aplicativo móvil del consumidor
 
 Aplicación Flutter para Android (Documento de Arquitectura, AD04). El consumidor la usa
-sin registrarse. Por ahora cubre el CU05 hasta elegir el punto de partida, el modo y el radio.
+sin registrarse. Por ahora cubre el CU05: lista de compras, punto de partida y costo total por mercado.
 
 | Pantalla del prototipo | Archivo |
 |---|---|
 | C6 Mi lista de compras — vacía · C7 Mi lista de compras | `lib/pantallas/mi_lista.dart` |
 | Agregar un producto (no está en el prototipo; usa piezas de C1 y C2) | `lib/pantallas/agregar_producto.dart` |
 | C8 Punto de partida y modo | `lib/pantallas/punto_de_partida.dart` (GPS en `lib/ubicacion.dart`) |
+| C9 Calculando el costo · C10 Resultado por mercado | `lib/pantallas/resultado.dart` |
 | cmp/Nav inferior | `lib/pantallas/inicio.dart` |
 
 La lista se guarda en el teléfono (`lib/lista.dart`), no en el servidor. Colores,

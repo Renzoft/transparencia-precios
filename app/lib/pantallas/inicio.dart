@@ -10,6 +10,7 @@ import '../lista.dart';
 import '../tema.dart';
 import 'mi_lista.dart';
 import 'punto_de_partida.dart';
+import 'resultado.dart';
 
 class PantallaInicio extends StatefulWidget {
   const PantallaInicio({super.key, required this.api, required this.lista});
@@ -26,23 +27,37 @@ class _EstadoInicio extends State<PantallaInicio> {
 
   /// «Calcular costo total» (CU05, paso 5): lleva al punto de partida y el modo (C8).
   void _calcular() {
-    Navigator.of(context).push(MaterialPageRoute(
+    Navigator.of(context).push(
+      MaterialPageRoute(
         builder: (_) => PantallaPuntoDePartida(
-              api: widget.api,
-              alCalcular: (contexto, partida) => ScaffoldMessenger.of(contexto)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(const SnackBar(
-                    content: Text('Próximamente: el costo total en cada mercado.'))),
-            )));
+          api: widget.api,
+          alCalcular: (contexto, partida) => Navigator.of(contexto).push(
+            MaterialPageRoute(
+              builder: (_) => PantallaResultado(
+                api: widget.api,
+                items: widget.lista.items,
+                partida: partida,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final nav = NavInferior(
-        seleccionada: _seccion, alElegir: (i) => setState(() => _seccion = i));
+      seleccionada: _seccion,
+      alElegir: (i) => setState(() => _seccion = i),
+    );
     return switch (_seccion) {
       1 => VistaMiLista(
-          api: widget.api, lista: widget.lista, navegacion: nav, alCalcular: _calcular),
+        api: widget.api,
+        lista: widget.lista,
+        navegacion: nav,
+        alCalcular: _calcular,
+      ),
       0 => _Proximamente(titulo: 'Consultar precios', navegacion: nav),
       _ => _Proximamente(titulo: 'Mercados', navegacion: nav),
     };
@@ -57,12 +72,12 @@ class _Proximamente extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MarcoPantalla(
-        barra: BarraSuperior(titulo),
-        navegacion: navegacion,
-        contenido: const [
-          Aviso('Esta sección estará disponible próximamente.', tipo: TipoAviso.informacion),
-        ],
-      );
+    barra: BarraSuperior(titulo),
+    navegacion: navegacion,
+    contenido: const [
+      Aviso('Esta sección estará disponible próximamente.', tipo: TipoAviso.informacion),
+    ],
+  );
 }
 
 /// cmp/Nav inferior.
@@ -84,32 +99,47 @@ class NavInferior extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Colores.superficie,
         border: Border(top: BorderSide(color: Colores.borde)),
-        boxShadow: [BoxShadow(color: Color(0x140F1729), offset: Offset(0, -2), blurRadius: 5)],
+        boxShadow: [
+          BoxShadow(color: Color(0x140F1729), offset: Offset(0, -2), blurRadius: 5),
+        ],
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
           height: 64,
-          child: Row(children: [
-            for (final (i, (icono, texto)) in _opciones.indexed)
-              Expanded(
-                child: InkWell(
-                  onTap: () => alElegir(i),
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Column(children: [
-                      Icon(icono,
-                          size: 24,
-                          color: i == seleccionada ? Colores.primario : Colores.textoSuave),
-                      const SizedBox(height: 5),
-                      Text(texto,
-                          style: Textos.etiquetaS(
-                              i == seleccionada ? Colores.textoPrimario : Colores.textoSuave)),
-                    ]),
+          child: Row(
+            children: [
+              for (final (i, (icono, texto)) in _opciones.indexed)
+                Expanded(
+                  child: InkWell(
+                    onTap: () => alElegir(i),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Column(
+                        children: [
+                          Icon(
+                            icono,
+                            size: 24,
+                            color: i == seleccionada
+                                ? Colores.primario
+                                : Colores.textoSuave,
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            texto,
+                            style: Textos.etiquetaS(
+                              i == seleccionada
+                                  ? Colores.textoPrimario
+                                  : Colores.textoSuave,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-          ]),
+            ],
+          ),
         ),
       ),
     );
