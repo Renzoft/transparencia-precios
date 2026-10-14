@@ -14,7 +14,7 @@ from sqlalchemy import delete
 from app.core.base_datos import FabricaSesion
 from app.core.config import configuracion
 from app.core.dependencias import AdminActual
-from app.core.errores import ErrorAPI, manejar_error_api
+from app.core.errores import registrar_manejadores
 from app.core.seguridad import ALGORITMO, crear_token, hash_clave
 from app.main import app
 from app.modelos import Usuario
@@ -107,7 +107,7 @@ def test_clave_de_mas_de_72_bytes_no_rompe_el_servidor(admin):
 # Todavía no hay endpoints de administración: se monta uno mínimo solo para probar
 # la dependencia que todos ellos van a usar.
 protegida = FastAPI()
-protegida.add_exception_handler(ErrorAPI, manejar_error_api)
+registrar_manejadores(protegida)
 
 
 @protegida.get("/solo-admin")
