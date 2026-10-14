@@ -8,6 +8,7 @@ sin registrarse. Por ahora cubre el CU05: lista de compras, punto de partida y c
 | C6 Mi lista de compras — vacía · C7 Mi lista de compras | `lib/pantallas/mi_lista.dart` |
 | Agregar un producto (no está en el prototipo; usa piezas de C1 y C2) | `lib/pantallas/agregar_producto.dart` |
 | C8 Punto de partida y modo | `lib/pantallas/punto_de_partida.dart` (GPS en `lib/ubicacion.dart`) |
+| Dirección de partida escrita (EX2; no está en el prototipo) | `lib/pantallas/direccion.dart` |
 | C9 Calculando el costo · C10 Resultado por mercado | `lib/pantallas/resultado.dart` |
 | cmp/Nav inferior | `lib/pantallas/inicio.dart` |
 

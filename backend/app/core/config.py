@@ -36,6 +36,18 @@ class Configuracion(BaseSettings):
     jwt_secreto: SecretStr
     jwt_horas: int = 8
 
+    # OpenRouteService (RNF017): distancias y tiempos de viaje, y búsqueda de direcciones.
+    # Sin clave, la distancia se estima en línea recta (RNF008) y no se pueden buscar
+    # direcciones. La clave la obtiene el tesista en openrouteservice.org.
+    ors_clave: SecretStr | None = None
+    ors_url: str = "https://api.openrouteservice.org"
+
+    @field_validator("ors_clave")
+    @classmethod
+    def clave_vacia_es_ninguna(cls, v: SecretStr | None) -> SecretStr | None:
+        # «ORS_CLAVE=» en el .env llega como texto vacío: equivale a no tener clave.
+        return v if v is not None and v.get_secret_value().strip() else None
+
     @field_validator("jwt_secreto")
     @classmethod
     def secreto_suficiente(cls, v: SecretStr) -> SecretStr:

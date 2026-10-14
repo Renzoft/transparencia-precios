@@ -644,6 +644,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /direcciones:
+    post:
+      tags: [Comparación]
+      operationId: buscarDirecciones
+      summary: Busca una dirección de partida en Lima Metropolitana
+      description: >
+        Convierte la dirección que escribe el consumidor que no autorizó el GPS en
+        coordenadas para POST /comparaciones (R12; CU05, EX2). La búsqueda la hace
+        OpenRouteService, limitada a Lima Metropolitana y el Callao; la clave de ese
+        servicio no sale del servidor.
+
+        Es POST y no GET con la dirección en la URL porque la dirección es un dato
+        personal, y lo que va en la URL queda en la bitácora de acceso (RNF003).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DireccionBuscar'
+      responses:
+        '200':
+          description: Hasta cinco direcciones que coinciden, de la más a la menos probable
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Direccion'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+        '429':
+          description: Se superó el límite de peticiones que protege la cuota del servicio de rutas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: El servicio de búsqueda de direcciones no está disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /indicadores-uso:
     post:
       tags: [Comparación]
@@ -1095,6 +1139,30 @@ components:
         vigente_desde:
           type: string
           format: date
+
+    DireccionBuscar:
+      type: object
+      required: [texto]
+      properties:
+        texto:
+          type: string
+          minLength: 3
+          maxLength: 200
+          example: Av. Brasil 1240, Jesús María
+
+    Direccion:
+      type: object
+      required: [etiqueta, latitud, longitud]
+      properties:
+        etiqueta:
+          type: string
+          example: Avenida Brasil 1240, Jesús María, Lima, Perú
+        latitud:
+          type: number
+          format: double
+        longitud:
+          type: number
+          format: double
 
     PrecioMercadoItem:
       type: object

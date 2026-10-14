@@ -30,5 +30,7 @@ def respuestas(*codigos: int) -> dict:
         404: "El recurso no existe",
         409: "La operación choca con el estado actual del recurso",
         422: "Los campos se interpretan bien pero su contenido no es válido",
+        429: "Se superó el límite de peticiones que protege la cuota del servicio de rutas",
+        503: "El servicio externo que se necesita no está disponible",
     }
     return {c: {"model": Error, "description": descripciones[c]} for c in codigos}

@@ -1,10 +1,10 @@
 // C8 · Punto de partida y modo (CU05, pasos 6 a 8 y EX2).
 //
-// El prototipo muestra la dirección del punto de partida («Av. Brasil 1240, Jesús
-// María»). Convertir coordenadas en una dirección, y una dirección escrita en
-// coordenadas (EX2), necesita un servicio de geocodificación que todavía no está
-// conectado; llega con OpenRouteService. Mientras tanto se muestra «Tu ubicación actual»
-// con sus coordenadas.
+// El punto de partida es la ubicación del GPS o una dirección que el consumidor escribe
+// (EX2, o «Usar otra dirección»). Con el GPS se muestra «Tu ubicación actual» y sus
+// coordenadas, y no una dirección como en el prototipo: convertir coordenadas en una
+// dirección gastaría una consulta más de la cuota diaria de OpenRouteService en cada
+// cálculo, solo para mostrarla.
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +13,7 @@ import '../api.dart';
 import '../componentes.dart';
 import '../tema.dart';
 import '../ubicacion.dart';
+import 'direccion.dart';
 
 /// Radio de búsqueda: por defecto 3 km (RN06); el contrato admite hasta 20.
 const radioInicial = 3;
@@ -47,6 +48,7 @@ class PantallaPuntoDePartida extends StatefulWidget {
 
 class _EstadoPartida extends State<PantallaPuntoDePartida> {
   ResultadoUbicacion? _ubicacion; // nula mientras se busca
+  Direccion? _direccion; // la escrita por el consumidor; si hay una, manda sobre el GPS
   List<ModoDesplazamiento>? _modos;
   String? _errorModos;
   ModoDesplazamiento? _modo;
@@ -75,19 +77,22 @@ class _EstadoPartida extends State<PantallaPuntoDePartida> {
     }
   }
 
-  void _otraDireccion() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Próximamente podrás escribir una dirección de partida.'),
-        ),
-      );
+  Future<void> _otraDireccion() async {
+    final d = await Navigator.of(context).push<Direccion>(
+      MaterialPageRoute(builder: (_) => PantallaDireccion(api: widget.api)),
+    );
+    if (d != null && mounted) setState(() => _direccion = d);
+  }
+
+  void _usarGps() {
+    setState(() => _direccion = null);
+    _ubicar();
   }
 
   @override
   Widget build(BuildContext context) {
-    final origen = _ubicacion?.punto;
+    final d = _direccion;
+    final origen = d != null ? Punto(d.latitud, d.longitud) : _ubicacion?.punto;
     final modo = _modo;
     return MarcoPantalla(
       barra: BarraSuperior(
@@ -116,10 +121,25 @@ class _EstadoPartida extends State<PantallaPuntoDePartida> {
   }
 
   Widget _tarjetaPartida() {
-    final u = _ubicacion;
+    final u = _direccion != null ? null : _ubicacion;
+    final buscando = _direccion == null && u == null;
+    final sinUbicacion = u != null && u.punto == null;
     final Widget titulo;
     final List<Widget> resto;
-    if (u == null) {
+    if (_direccion != null) {
+      titulo = Text(_direccion!.etiqueta, style: Textos.tituloM());
+      resto = [
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 18,
+          runSpacing: 6,
+          children: [
+            _Enlace('Usar otra dirección', _otraDireccion),
+            _Enlace('Usar mi ubicación', _usarGps),
+          ],
+        ),
+      ];
+    } else if (u == null) {
       titulo = Text('Buscando tu ubicación…', style: Textos.tituloM());
       resto = [];
     } else if (u.punto != null) {
@@ -175,7 +195,7 @@ class _EstadoPartida extends State<PantallaPuntoDePartida> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(top: 10),
-                child: u == null
+                child: buscando
                     ? const SizedBox(
                         width: 22,
                         height: 22,
@@ -187,7 +207,7 @@ class _EstadoPartida extends State<PantallaPuntoDePartida> {
                     : Icon(
                         Icons.location_on_outlined,
                         size: 22,
-                        color: u.punto == null ? Colores.textoError : Colores.primario,
+                        color: sinUbicacion ? Colores.textoError : Colores.primario,
                       ),
               ),
               const SizedBox(width: 12),

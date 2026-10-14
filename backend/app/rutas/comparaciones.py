@@ -1,9 +1,10 @@
 """Endpoint de /comparaciones (CU05). Público: el consumidor no inicia sesión."""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.core.dependencias import SesionBD
+from app.core.limite import limite_comparaciones
 from app.esquemas.comparacion import ComparacionCrear, ComparacionResultado
-from app.esquemas.error import Error, respuestas
+from app.esquemas.error import respuestas
 from app.servicios import comparaciones
 
 router = APIRouter()
@@ -15,8 +16,7 @@ router = APIRouter()
              response_model_exclude_none=True, tags=["Comparación"],
              operation_id="crearComparacion",
              summary="Calcula el costo total por mercado cercano y la recomendación",
-             responses={**respuestas(422),
-                        429: {"model": Error, "description": "Se superó el límite de "
-                              "peticiones que protege la cuota del servicio de rutas"}})
+             responses=respuestas(422, 429),
+             dependencies=[Depends(limite_comparaciones)])
 def crear_comparacion(sesion: SesionBD, datos: ComparacionCrear) -> ComparacionResultado:
     return comparaciones.comparar(sesion, datos)

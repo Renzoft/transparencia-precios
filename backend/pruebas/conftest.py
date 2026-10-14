@@ -14,9 +14,27 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.base_datos import motor, obtener_sesion
+from app.core.config import configuracion
+from app.core.limite import limite_comparaciones, limite_direcciones
 from app.core.seguridad import crear_token, hash_clave
 from app.main import app
 from app.modelos import Usuario
+
+
+@pytest.fixture(autouse=True)
+def sin_openrouteservice(monkeypatch):
+    # Ninguna prueba llama al OpenRouteService real, aunque el .env tenga la clave: eso
+    # gastaría la cuota diaria y haría que las pruebas dependan de internet. Las que
+    # prueban la integración lo simulan (test_ors.py).
+    monkeypatch.setattr(configuracion, "ors_clave", None)
+
+
+@pytest.fixture(autouse=True)
+def limites_en_cero():
+    # Cada prueba empieza con el contador de peticiones vacío: si no, las pruebas de
+    # /comparaciones, que llegan todas del mismo cliente, chocarían con el límite.
+    limite_comparaciones.reiniciar()
+    limite_direcciones.reiniciar()
 
 
 @pytest.fixture

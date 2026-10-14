@@ -130,6 +130,14 @@ class Comparacion {
   final List<MercadoComparado> mercados;   // ya ordenados por la API
 }
 
+/// Una dirección encontrada para el punto de partida (CU05, EX2).
+class Direccion {
+  Direccion(this.etiqueta, this.latitud, this.longitud);
+  final String etiqueta;
+  final double latitud;
+  final double longitud;
+}
+
 class ClienteApi {
   ClienteApi({String? base, http.Client? cliente})
       : _base = (base ?? urlApi).replaceAll(RegExp(r'/+$'), ''),
@@ -199,5 +207,17 @@ class ClienteApi {
       for (final m in j['mercados'] as List)
         MercadoComparado.desdeJson(m as Map<String, dynamic>)
     ]);
+  }
+
+  /// POST /direcciones (R12; CU05, EX2): la dirección viaja en el cuerpo y no en la URL.
+  Future<List<Direccion>> buscarDirecciones(String texto) async {
+    final j = await _enviar(() => _http.post(_url('/direcciones'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'texto': texto.trim()}))) as List;
+    return [
+      for (final d in j)
+        Direccion((d as Map)['etiqueta'] as String, (d['latitud'] as num).toDouble(),
+            (d['longitud'] as num).toDouble())
+    ];
   }
 }

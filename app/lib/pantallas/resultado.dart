@@ -8,8 +8,8 @@
 //    le faltan precios no es el más barato, solo le falta sumar productos. Por lo mismo,
 //    la diferencia «+ S/ …» solo se muestra entre mercados con la lista completa.
 //  - El aviso de distancia aproximada dice solo eso, sin «el servicio de rutas no
-//    respondió»: mientras OpenRouteService no esté conectado, la línea recta no se debe a
-//    que haya fallado.
+//    respondió»: la API no dice por qué fue en línea recta (puede no tener clave
+//    configurada, o el servicio no tener ruta hasta algún mercado).
 //  - «Ver comparación y recomendación» lleva al CU06, que aún no se construye; el botón
 //    no aparece.
 
