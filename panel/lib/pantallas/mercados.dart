@@ -1,10 +1,9 @@
-// A6 · Mercados registrados y A8 · Desactivar mercado (CU02, pasos 1 a 3, FA1 y FA2).
+// A6 · Mercados registrados y A8 · Desactivar mercado (CU02, pasos 1 a 3, FA1 y FA2), con
+// la pestaña de A9 · Tarifas de desplazamiento (tarifas.dart).
 //
 // El prototipo no dibuja los botones «Editar» y «Desactivar» que nombran FA1 y FA2. Aquí
 // aparecen al tocar un mercado de la lista, en un menú con esas dos opciones. Un mercado
 // desactivado solo ofrece «Editar»: reactivarlo no forma parte del CU02.
-//
-// La pestaña «Tarifas» (A9) se construye en la pieza siguiente del CU02.
 
 import 'package:flutter/material.dart';
 
@@ -13,6 +12,7 @@ import '../componentes.dart';
 import '../tema.dart';
 import 'formulario_mercado.dart';
 import 'inicio_sesion.dart';
+import 'tarifas.dart';
 
 class PantallaMercados extends StatefulWidget {
   const PantallaMercados({super.key, required this.api});
@@ -24,6 +24,8 @@ class PantallaMercados extends StatefulWidget {
 
 class _EstadoMercados extends State<PantallaMercados> {
   final _busqueda = TextEditingController();
+  final _tarifas = GlobalKey<EstadoVistaTarifas>();
+  final _guardandoTarifas = ValueNotifier(false);
   int _pestana = 0;
   List<Mercado>? _mercados;
   String? _error;
@@ -39,6 +41,7 @@ class _EstadoMercados extends State<PantallaMercados> {
   @override
   void dispose() {
     _busqueda.dispose();
+    _guardandoTarifas.dispose();
     super.dispose();
   }
 
@@ -154,14 +157,18 @@ class _EstadoMercados extends State<PantallaMercados> {
         if (enMercados)
           ..._listaMercados()
         else
-          const Aviso(
-            'Las tarifas de desplazamiento estarán disponibles próximamente.',
-            tipo: TipoAviso.informacion,
-          ),
+          VistaTarifas(key: _tarifas, api: widget.api, guardando: _guardandoTarifas),
       ],
       pie: enMercados
           ? BotonPrimario('Nuevo mercado', alPresionar: () => _abrirFormulario())
-          : null,
+          : ValueListenableBuilder<bool>(
+              valueListenable: _guardandoTarifas,
+              builder: (_, guardando, _) => BotonPrimario(
+                'Guardar tarifas',
+                alPresionar: () => _tarifas.currentState?.guardar(),
+                cargando: guardando,
+              ),
+            ),
     );
   }
 

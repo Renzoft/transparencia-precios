@@ -1,5 +1,5 @@
 // Cliente de la API REST (openapi.yaml). Cubre lo que usa el panel: iniciar sesión, las
-// operaciones de /cargas (CU01) y las de /mercados (CU02).
+// operaciones de /cargas (CU01) y las de /mercados y /tarifas (CU02).
 //
 // El token se guarda solo en memoria, nunca en el almacenamiento del navegador: si se
 // recarga la página hay que volver a entrar, pero un token no queda guardado donde otro
@@ -151,6 +151,43 @@ class Mercado {
       );
 }
 
+class ModoDesplazamiento {
+  ModoDesplazamiento(this.id, this.nombre);
+  final int id;
+  final String nombre;
+}
+
+class Tarifa {
+  Tarifa({
+    required this.id,
+    required this.idModo,
+    required this.tipoCobro,
+    required this.monto,
+    required this.desde,
+    this.hasta,
+  });
+
+  final int id;
+  final int idModo;
+  final String tipoCobro;
+  final double monto;
+  final DateTime desde;
+  final DateTime? hasta;
+
+  factory Tarifa.desdeJson(Map<String, dynamic> j) => Tarifa(
+        id: j['id_tarifa'] as int,
+        idModo: j['id_modo_desplazamiento'] as int,
+        tipoCobro: j['tipo_cobro'] as String,
+        monto: (j['monto'] as num).toDouble(),
+        desde: DateTime.parse(j['vigente_desde'] as String),
+        hasta: j['vigente_hasta'] == null ? null : DateTime.parse(j['vigente_hasta'] as String),
+      );
+}
+
+/// Fecha AAAA-MM-DD, como la pide el contrato.
+String fechaIso(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
 class ClienteApi {
   ClienteApi({String base = urlApi, http.Client? cliente})
       : _base = base.replaceAll(RegExp(r'/+$'), ''),
@@ -255,5 +292,33 @@ class ClienteApi {
         headers: {..._cabeceras, 'Content-Type': 'application/json'},
         body: jsonEncode(cambios)));
     return Mercado.desdeJson(_json(r) as Map<String, dynamic>);
+  }
+
+  /// GET /modos-desplazamiento.
+  Future<List<ModoDesplazamiento>> listarModos() async {
+    final r = await _enviar(() => _http.get(_url('/modos-desplazamiento')));
+    return [
+      for (final m in _json(r) as List)
+        ModoDesplazamiento((m as Map)['id_modo_desplazamiento'] as int, m['nombre'] as String)
+    ];
+  }
+
+  /// GET /tarifas: todo el historial, para saber también desde cuándo rige cada una.
+  Future<List<Tarifa>> listarTarifas() async {
+    final r = await _enviar(() => _http.get(_url('/tarifas'), headers: _cabeceras));
+    return [for (final t in _json(r) as List) Tarifa.desdeJson(t as Map<String, dynamic>)];
+  }
+
+  /// POST /tarifas: nueva vigencia; la API cierra la anterior (AD13).
+  Future<Tarifa> crearTarifa(int idModo, String tipoCobro, double monto, DateTime desde) async {
+    final r = await _enviar(() => _http.post(_url('/tarifas'),
+        headers: {..._cabeceras, 'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'id_modo_desplazamiento': idModo,
+          'tipo_cobro': tipoCobro,
+          'monto': monto,
+          'vigente_desde': fechaIso(desde),
+        })));
+    return Tarifa.desdeJson(_json(r) as Map<String, dynamic>);
   }
 }

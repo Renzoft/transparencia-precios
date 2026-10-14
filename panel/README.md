@@ -1,7 +1,8 @@
 # Panel de administración
 
 Aplicación Flutter Web para el administrador (Documento de Arquitectura, AD04). Por ahora
-cubre el CU01 (iniciar sesión y cargar los precios del SISAP) y los mercados del CU02.
+cubre el CU01 (iniciar sesión y cargar los precios del SISAP) y el CU02 (mercados y
+tarifas de desplazamiento).
 
 | Pantalla del prototipo | Archivo |
 |---|---|
@@ -11,6 +12,7 @@ cubre el CU01 (iniciar sesión y cargar los precios del SISAP) y los mercados de
 | A5 Resumen de la carga | `lib/pantallas/resumen_carga.dart` |
 | A6 Mercados registrados · A8 Desactivar mercado | `lib/pantallas/mercados.dart` |
 | A7 Nuevo mercado (y su edición, FA1) | `lib/pantallas/formulario_mercado.dart` |
+| A9 Tarifas de desplazamiento | `lib/pantallas/tarifas.dart` |
 
 Colores, tipografía y radios salen de las variables de los prototipos en Figma
 (`lib/tema.dart`).
