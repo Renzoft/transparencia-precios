@@ -47,6 +47,22 @@ Con la API levantada:
 - <http://localhost:8000/salud> — comprueba que el servicio responde
 - <http://localhost:8000/docs> — documentación interactiva de los endpoints
 
+## Base de datos
+
+El esquema completo está en `base_datos/crear_base_datos.sql`. Los cambios posteriores se
+hacen con Alembic **y además** se copian a ese script, para que siga describiendo la base
+entera.
+
+Alembic cambia la estructura, así que entra con el rol `postgres` y no con el de la API.
+La clave se escribe en la terminal y no se guarda en ningún archivo:
+
+```bash
+read -s -p "Clave de postgres: " MIG_PGPASSWORD && export MIG_PGPASSWORD
+python -m alembic upgrade head     # base existente: aplica lo que falte
+python -m alembic stamp head       # base recién creada con el .sql: solo la marca
+unset MIG_PGPASSWORD
+```
+
 ## Pruebas
 
 ```bash

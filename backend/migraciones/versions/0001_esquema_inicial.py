@@ -4,7 +4,10 @@ Esta revisión no ejecuta nada. Marca como punto de partida la base que ya const
 crear_base_datos.sql y que verificar_bd.py comprobó regla por regla. Así hay una sola
 fuente de verdad del esquema inicial, y Alembic se encarga solo de lo que cambie después.
 
-En una base ya creada se aplica con «alembic stamp 0001», no con «upgrade».
+Regla del proyecto: cada migración posterior se refleja también en
+crear_base_datos.sql, que sigue siendo el esquema completo. Por eso una base recién
+creada con ese script ya está al día y se marca con «alembic stamp head»; una base
+existente se pone al día con «alembic upgrade head».
 
 Revision ID: 0001
 Revises:

@@ -4,7 +4,7 @@
 --
 --  Gestor      : PostgreSQL 16 o superior (restricción RNF016)
 --  Codificación: UTF-8
---  Base        : 15 tablas, 99 campos, 16 claves foráneas, 7 índices
+--  Base        : 15 tablas, 100 campos, 16 claves foráneas, 7 índices
 --
 --  Requiere un rol con privilegios para crear la extensión btree_gist y el rol
 --  app_precios. Se ejecuta dentro de una base ya creada; ver scripts/instalar_bd.ps1.
@@ -50,6 +50,11 @@ CREATE TABLE carga_archivo (
     registros_rechazados  INTEGER       NOT NULL,
     -- El CU01 exige que el administrador revise el resumen y confirme antes de guardar.
     estado                VARCHAR(12)   NOT NULL DEFAULT 'pendiente',
+    -- El archivo tal como se subió. Guarda la carga pendiente entre el resumen y la
+    -- confirmación sin usar la memoria del servidor (AD10), y deja cada precio ligado
+    -- al archivo exacto del que salió (RNF010). Nulo en las cargas históricas iniciales,
+    -- que cargar_precios.py hizo desde CSV y no desde un archivo subido.
+    contenido_archivo     BYTEA         NULL,
     CONSTRAINT uq_carga_hash    UNIQUE (hash_archivo),
     CONSTRAINT ck_carga_fuente  CHECK (fuente IN ('SISAP minorista',
                                                   'SISAP mayorista',

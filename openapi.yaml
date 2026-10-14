@@ -84,7 +84,9 @@ paths:
                 archivo:
                   type: string
                   format: binary
-                  description: Archivo .xlsx exportado del SISAP
+                  description: >
+                    Archivo .xls exportado del SISAP con «Exportar a Excel». Pese a la
+                    extensión, por dentro es una tabla HTML en codificación Latin-1.
                 fuente:
                   type: string
                   enum: [SISAP minorista, SISAP mayorista, precios por mercado]
@@ -791,7 +793,7 @@ components:
           enum: [pendiente, confirmada, descartada]
         nombre_archivo:
           type: string
-          example: sisap_minorista_2026-09.xlsx
+          example: reporte.xls
         fuente:
           type: string
           enum: [SISAP minorista, SISAP mayorista, precios por mercado]

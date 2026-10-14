@@ -2,8 +2,8 @@
 from datetime import datetime
 
 from sqlalchemy import (CHAR, BigInteger, Boolean, DateTime, ForeignKey, Integer,
-                        String, UniqueConstraint, text)
-from sqlalchemy.orm import Mapped, mapped_column
+                        LargeBinary, String, UniqueConstraint, text)
+from sqlalchemy.orm import Mapped, deferred, mapped_column
 
 from app.modelos.base import Base
 
@@ -38,6 +38,9 @@ class CargaArchivo(Base):
     registros_validos: Mapped[int] = mapped_column(Integer)
     registros_rechazados: Mapped[int] = mapped_column(Integer)
     estado: Mapped[str] = mapped_column(String(12), server_default=text("'pendiente'"))
+    # El archivo original. «deferred»: no se trae de la base salvo que se pida, para que
+    # listar el historial de cargas no arrastre el contenido de cada archivo.
+    contenido_archivo: Mapped[bytes | None] = deferred(mapped_column(LargeBinary))
 
 
 class CargaRechazo(Base):
