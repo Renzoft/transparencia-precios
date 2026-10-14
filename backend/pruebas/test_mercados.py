@@ -1,6 +1,9 @@
 """Mercados minoristas del CU02, contra la base real y dentro de una transacción que se
 deshace al terminar (ver conftest.py): ningún mercado de prueba queda guardado.
 
+Los nombres llevan «(prueba)» para no chocar con los mercados reales que el
+administrador ya registró: «Mercado de Magdalena» existe de verdad en la base.
+
 Cada respuesta se valida además contra el esquema del contrato.
 """
 import pytest
@@ -10,7 +13,7 @@ from pruebas.contrato import validar_respuesta
 URL = "/api/v1/mercados"
 
 MAGDALENA = {
-    "nombre": "Mercado de Magdalena", "distrito": "Magdalena del Mar",
+    "nombre": "Mercado de Magdalena (prueba)", "distrito": "Magdalena del Mar",
     "direccion": "Jr. Leoncio Prado 1200", "latitud": -12.0912, "longitud": -77.0712,
     "horario_atencion": "6:00 – 18:00",
 }
@@ -50,7 +53,7 @@ def test_las_coordenadas_se_guardan_con_seis_decimales(cliente, auth):
 
 def test_mismo_nombre_y_distrito_es_repetido_aunque_cambien_tildes_y_mayusculas(cliente, auth):
     primero = crear(cliente, auth).json()
-    r = crear(cliente, auth, nombre="MERCADO DE MAGDALENA ", distrito="magdalena del mar",
+    r = crear(cliente, auth, nombre="MERCADO DE MAGDALENA (PRUEBA) ", distrito="magdalena del mar",
               direccion="Otra dirección 123")
     assert r.status_code == 409
     e = r.json()["error"]
@@ -86,7 +89,7 @@ def test_coordenadas_intercambiadas_se_avisan_como_tales(cliente, auth):
 
 
 def test_el_callao_esta_dentro(cliente, auth):
-    r = crear(cliente, auth, nombre="Mercado Central del Callao", distrito="Callao",
+    r = crear(cliente, auth, nombre="Mercado Central del Callao (prueba)", distrito="Callao",
               latitud=-12.0566, longitud=-77.1181)
     assert r.status_code == 201
 
@@ -137,10 +140,12 @@ def test_un_token_invalido_no_se_ignora_en_silencio(cliente):
 
 def test_filtrar_por_distrito_sin_importar_tildes(cliente, auth):
     crear(cliente, auth)
-    crear(cliente, auth, nombre="Mercado N.° 1 de Surquillo", distrito="Surquillo",
+    crear(cliente, auth, nombre="Mercado N.° 1 de Surquillo (prueba)", distrito="Surquillo",
           latitud=-12.1124, longitud=-77.0228)
     r = listar(cliente, distrito="MAGDALENA DEL MAR")
-    assert [m["nombre"] for m in r.json()] == ["Mercado de Magdalena"]
+    nombres = [m["nombre"] for m in r.json()]
+    assert MAGDALENA["nombre"] in nombres
+    assert all(m["distrito"] == "Magdalena del Mar" for m in r.json())
 
 
 def test_detalle_publico_de_un_mercado_activo(cliente, auth):
@@ -167,14 +172,14 @@ def test_cambiar_solo_la_latitud_se_valida_con_la_longitud_que_ya_tenia(cliente,
 
 def test_renombrar_como_otro_mercado_del_mismo_distrito_responde_409(cliente, auth):
     crear(cliente, auth)
-    otro = crear(cliente, auth, nombre="Mercado Modelo", latitud=-12.0950).json()
-    r = editar(cliente, auth, otro["id_mercado"], nombre="mercado de magdalena")
+    otro = crear(cliente, auth, nombre="Mercado Modelo (prueba)", latitud=-12.0950).json()
+    r = editar(cliente, auth, otro["id_mercado"], nombre="mercado de magdalena (prueba)")
     assert r.status_code == 409
 
 
 def test_renombrar_cambiando_solo_mayusculas_no_choca_consigo_mismo(cliente, auth):
     m = crear(cliente, auth).json()
-    assert editar(cliente, auth, m["id_mercado"], nombre="MERCADO DE MAGDALENA").status_code == 200
+    assert editar(cliente, auth, m["id_mercado"], nombre="MERCADO DE MAGDALENA (PRUEBA)").status_code == 200
 
 
 def test_borrar_el_horario_con_null(cliente, auth):

@@ -384,7 +384,10 @@ paths:
         - name: vigentes
           in: query
           required: false
-          description: Si es verdadero, devuelve solo las tarifas sin fecha de cierre
+          description: >
+            Si es verdadero, devuelve solo las tarifas que rigen hoy: una tarifa
+            programada para una fecha futura todavía no rige, y la que la precede sigue
+            rigiendo hasta esa fecha
           schema:
             type: boolean
             default: false
@@ -408,6 +411,10 @@ paths:
       description: >
         Las vigencias se suceden, no se editan: no existe PUT ni PATCH sobre una tarifa,
         porque editarla haría irreproducible el cálculo de comparaciones anteriores (AD13).
+        La nueva vigencia no puede empezar en el pasado ni el mismo día o antes que la
+        vigencia abierta del modo (409). El desplazamiento a pie cuesta cero (RN07) y no
+        admite tarifas nuevas; el transporte público cobra un pasaje fijo, y el taxi y el
+        auto particular cobran por kilómetro (422 si el tipo de cobro no corresponde).
       requestBody:
         required: true
         content:
@@ -1024,6 +1031,7 @@ components:
           type: number
           format: double
           minimum: 0
+          maximum: 999999.99
           example: 2.50
         vigente_desde:
           type: string
@@ -1051,6 +1059,7 @@ components:
           type: number
           format: double
           minimum: 0
+          maximum: 999999.99
         vigente_desde:
           type: string
           format: date

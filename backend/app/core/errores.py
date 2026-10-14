@@ -101,6 +101,9 @@ def _problema(e: dict) -> str:
     plantilla = traducciones.get(tipo)
     if plantilla is None:
         return "no es un valor válido"
+    # Un límite de un campo decimal llega como 0.0; al usuario se le muestra «0».
+    ctx = {k: int(v) if isinstance(v, float) and v.is_integer() else v
+           for k, v in ctx.items()}
     try:
         return plantilla.format(**ctx)
     except (KeyError, IndexError):
