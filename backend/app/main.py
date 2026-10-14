@@ -5,7 +5,8 @@ Se ejecuta desde backend/ con:  .venv/Scripts/python.exe -m uvicorn app.main:app
 from fastapi import FastAPI
 
 from app import VERSION
-from app.rutas import salud
+from app.core.errores import ErrorAPI, manejar_error_api
+from app.rutas import salud, sesiones
 
 # Todos los endpoints del contrato cuelgan de este prefijo (openapi.yaml, «servers»).
 PREFIJO_API = "/api/v1"
@@ -17,7 +18,9 @@ def crear_app() -> FastAPI:
         version=VERSION,
         description="Contrato completo en openapi.yaml, en la raíz del repositorio.",
     )
+    app.add_exception_handler(ErrorAPI, manejar_error_api)
     app.include_router(salud.router)
+    app.include_router(sesiones.router, prefix=PREFIJO_API)
     return app
 
 

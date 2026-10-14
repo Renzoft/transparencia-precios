@@ -6,7 +6,7 @@ archivo backend/.env; en Railway, de las variables que se definan en el servicio
 """
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/.env, sin importar desde qué carpeta se lance la API.
@@ -26,6 +26,18 @@ class Configuracion(BaseSettings):
     pguser: str = "app_precios"
     # SecretStr evita que la contraseña aparezca si alguien imprime la configuración.
     pgpassword: SecretStr
+
+    # Sesión del administrador (RNF001): token firmado con vigencia de ocho horas.
+    jwt_secreto: SecretStr
+    jwt_horas: int = 8
+
+    @field_validator("jwt_secreto")
+    @classmethod
+    def secreto_suficiente(cls, v: SecretStr) -> SecretStr:
+        # Con un secreto corto, cualquiera podría adivinarlo y fabricar tokens válidos.
+        if len(v.get_secret_value()) < 32:
+            raise ValueError("JWT_SECRETO debe tener al menos 32 caracteres")
+        return v
 
 
 configuracion = Configuracion()
