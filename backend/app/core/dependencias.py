@@ -50,3 +50,22 @@ def admin_actual(
 
 
 AdminActual = Annotated[Usuario, Depends(admin_actual)]
+
+
+def admin_opcional(
+    sesion: SesionBD,
+    credenciales: Annotated[HTTPAuthorizationCredentials | None,
+                            Depends(_esquema_bearer)],
+) -> Usuario | None:
+    """Para endpoints públicos que muestran más al administrador.
+
+    Sin token, la petición es la de un consumidor y devuelve None. Con un token que no
+    sirve responde 401, en lugar de tratarla en silencio como pública: quien manda un
+    token espera que se use, y ocultarle el error lo dejaría viendo menos sin saber por qué.
+    """
+    if credenciales is None:
+        return None
+    return admin_actual(sesion, credenciales)
+
+
+AdminOpcional = Annotated[Usuario | None, Depends(admin_opcional)]

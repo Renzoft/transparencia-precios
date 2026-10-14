@@ -94,6 +94,10 @@ def _problema(e: dict) -> str:
     }
     if tipo == "value_error" and "email" in e.get("msg", "").lower():
         return "no es un correo electrónico válido"
+    # Un texto que debe tener al menos un carácter y llega vacío (o solo con espacios)
+    # es, para quien llena el formulario, un campo obligatorio sin llenar (CU02, EX1).
+    if tipo == "string_too_short" and ctx.get("min_length") == 1:
+        return "es obligatorio"
     plantilla = traducciones.get(tipo)
     if plantilla is None:
         return "no es un valor válido"

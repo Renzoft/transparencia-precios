@@ -15,7 +15,6 @@ Una variedad nueva no se crea al subir sino al confirmar: si el administrador de
 el catálogo queda intacto.
 """
 import hashlib
-import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -33,6 +32,7 @@ from app.modelos import (CargaArchivo, CargaRechazo, PrecioSerie, Producto, Usua
                          Variedad)
 from app.servicios import lector_sisap
 from app.servicios.lector_sisap import DUPLICADO, MAYORISTA, MINORISTA, Lectura, Registro
+from app.servicios.texto import normalizar as _normalizar
 
 # Un archivo del SISAP de un año entero de una variedad pesa unos 200 KB.
 TAMANO_MAXIMO = 5 * 1024 * 1024
@@ -40,13 +40,6 @@ TAMANO_MAXIMO = 5 * 1024 * 1024
 # Orden fijo de los motivos en el resumen, el mismo del contrato.
 MOTIVOS = ["duplicado", "dato faltante", "precio no válido", "unidad desconocida",
            "fecha fuera de rango"]
-
-
-def _normalizar(texto: str) -> str:
-    """Para comparar nombres sin que importen tildes, mayúsculas ni espacios dobles."""
-    sin_tildes = "".join(c for c in unicodedata.normalize("NFKD", texto)
-                         if not unicodedata.combining(c))
-    return " ".join(sin_tildes.lower().split())
 
 
 # ----------------------------------------------------------- análisis de un archivo

@@ -252,6 +252,15 @@ paths:
           schema:
             type: string
             maxLength: 80
+        - name: incluir_inactivos
+          in: query
+          required: false
+          description: >
+            Incluye los mercados desactivados. Solo para el administrador, que necesita
+            verlos en la lista del CU02; exige token y sin él responde 401.
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Mercados activos
@@ -261,6 +270,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Mercado'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
     post:
       tags: [Administración]
       operationId: crearMercado
@@ -296,6 +309,9 @@ paths:
       tags: [Catálogo]
       operationId: obtenerMercado
       summary: Detalle de un mercado
+      description: >
+        Un mercado desactivado responde 404 al consumidor (RN11); el administrador, con su
+        token, sí lo ve.
       security: []
       responses:
         '200':
@@ -304,8 +320,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Mercado'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
         '404':
           $ref: '#/components/responses/NoEncontrado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
     patch:
       tags: [Administración]
       operationId: actualizarMercado
@@ -330,6 +350,12 @@ paths:
           $ref: '#/components/responses/NoAutenticado'
         '404':
           $ref: '#/components/responses/NoEncontrado'
+        '409':
+          description: Ya existe otro mercado con ese nombre en ese distrito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '422':
           $ref: '#/components/responses/NoProcesable'
 
@@ -373,6 +399,8 @@ paths:
                   $ref: '#/components/schemas/Tarifa'
         '401':
           $ref: '#/components/responses/NoAutenticado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
     post:
       tags: [Administración]
       operationId: crearTarifa
