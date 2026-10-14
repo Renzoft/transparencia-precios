@@ -1,0 +1,23 @@
+# Configuración de la cobertura de pruebas.
+#
+# El Documento de Arquitectura (sección 8.7) exige una cobertura mínima del 70 % en los
+# módulos del backend. fail_under hace que las pruebas fallen si se baja de ese mínimo,
+# así el umbral se vigila solo y no depende de que alguien lo revise.
+
+[run]
+source = app
+# Cobertura de ramas: no basta con pasar por cada línea, cada «if» debe recorrerse
+# por sus dos lados.
+branch = True
+
+[report]
+fail_under = 70
+show_missing = True
+exclude_lines =
+    pragma: no cover
+    # Arranque de los comandos de terminal: se prueba llamando a main(), no al módulo.
+    if __name__ == .__main__.:
+
+[html]
+directory = htmlcov
+title = Cobertura del backend - transparencia-precios

@@ -56,3 +56,14 @@ Con la API levantada:
 Las pruebas incluyen una comparación contra `openapi.yaml`: la API no puede exponer
 nada que el contrato no declare, y sus respuestas reales deben validar contra los
 esquemas del contrato.
+
+## Cobertura
+
+El Documento de Arquitectura exige al menos 70 % de cobertura. Se mide por líneas y por
+ramas, y las pruebas fallan si se baja de ese mínimo (`backend/.coveragerc`):
+
+```bash
+python -m pytest --cov --cov-report=term-missing --cov-report=html
+```
+
+El informe navegable queda en `backend/htmlcov/index.html`.
