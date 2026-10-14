@@ -22,6 +22,7 @@ backend/        API REST en Python con FastAPI
   migraciones/ cambios de esquema con Alembic
   pruebas/      pruebas con pytest
 panel/          panel de administración en Flutter Web (ver panel/README.md)
+app/            aplicativo móvil del consumidor en Flutter (ver app/README.md)
 ```
 
 ## Poner en marcha el backend
