@@ -1,0 +1,17 @@
+# Entorno virtual y cachés de Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Credenciales: nunca al repositorio
+.env
+.env.*
+!.env.example
+
+# Sistema operativo
+Thumbs.db
+.DS_Store

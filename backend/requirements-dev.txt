@@ -1,0 +1,8 @@
+# Dependencias para desarrollar y probar. Incluye las de la API.
+# Instalar con:  .venv/Scripts/python.exe -m pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+pytest==9.1.1
+pytest-cov==7.1.0
+httpx2==2.13.1
