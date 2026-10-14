@@ -71,9 +71,12 @@ def test_operacion_coincide_con_el_contrato(clave):
 
     # Campos de entrada: mismos nombres, mismos obligatorios y mismos límites.
     if "requestBody" in pactada:
-        esq_p = a_jsonschema(pactada["requestBody"]["content"]["application/json"]["schema"])
-        esq_r = a_jsonschema(real["requestBody"]["content"]["application/json"]["schema"],
-                             app.openapi())
+        # JSON en casi todas; multipart/form-data en la subida de archivos.
+        tipo = next(iter(pactada["requestBody"]["content"]))
+        assert tipo in real["requestBody"]["content"], (
+            "tipo de cuerpo: el contrato pide %s" % tipo)
+        esq_p = a_jsonschema(pactada["requestBody"]["content"][tipo]["schema"])
+        esq_r = a_jsonschema(real["requestBody"]["content"][tipo]["schema"], app.openapi())
         assert set(esq_r["properties"]) == set(esq_p["properties"])
         assert set(esq_r.get("required", [])) == set(esq_p.get("required", []))
         for campo, p in esq_p["properties"].items():

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 from app import VERSION
 from app.core.errores import registrar_manejadores
-from app.rutas import salud, sesiones
+from app.rutas import cargas, salud, sesiones
 
 # Todos los endpoints del contrato cuelgan de este prefijo (openapi.yaml, «servers»).
 PREFIJO_API = "/api/v1"
@@ -21,6 +21,7 @@ def crear_app() -> FastAPI:
     registrar_manejadores(app)
     app.include_router(salud.router)
     app.include_router(sesiones.router, prefix=PREFIJO_API)
+    app.include_router(cargas.router, prefix=PREFIJO_API)
     return app
 
 

@@ -138,6 +138,8 @@ paths:
                   $ref: '#/components/schemas/CargaResumen'
         '401':
           $ref: '#/components/responses/NoAutenticado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
 
   /cargas/{id}:
     parameters:
@@ -157,6 +159,8 @@ paths:
           $ref: '#/components/responses/NoAutenticado'
         '404':
           $ref: '#/components/responses/NoEncontrado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
     patch:
       tags: [Administración]
       operationId: resolverCarga
@@ -187,6 +191,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
 
   /productos:
     get:
