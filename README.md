@@ -9,6 +9,8 @@ Tesis de Renzo Alexander Munayco Vivanco — Ingeniería de Software, UNMSM.
 ## Estructura
 
 ```
+openapi.yaml    contrato de la API: lo que el backend debe cumplir
+base_datos/     crear_base_datos.sql, el esquema de la base
 backend/        API REST en Python con FastAPI
   app/
     core/       configuración, conexión a la base, seguridad
@@ -16,6 +18,8 @@ backend/        API REST en Python con FastAPI
     esquemas/   lo que entra y sale de la API
     servicios/  reglas de negocio
     rutas/      endpoints, uno por módulo
+    gestion/    comandos de mantenimiento
+  migraciones/ cambios de esquema con Alembic
   pruebas/      pruebas con pytest
 ```
 
@@ -48,3 +52,7 @@ Con la API levantada:
 ```bash
 .venv/Scripts/python.exe -m pytest
 ```
+
+Las pruebas incluyen una comparación contra `openapi.yaml`: la API no puede exponer
+nada que el contrato no declare, y sus respuestas reales deben validar contra los
+esquemas del contrato.

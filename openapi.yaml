@@ -1,0 +1,1507 @@
+openapi: 3.0.3
+
+info:
+  title: API del aplicativo móvil de transparencia de precios
+  version: "1.0.0"
+  description: >
+    Contrato de la API REST del aplicativo móvil de transparencia de precios en mercados
+    minoristas de Lima Metropolitana. Los endpoints públicos atienden al consumidor, que usa
+    la aplicación sin registrarse (RNF003); los endpoints de administración exigen un token
+    con rol administrador (RNF001).
+
+    Este archivo es el contrato acordado en la actividad "Diseño de la API REST" del Hito 2.
+    La especificación que genere el backend una vez construido debe coincidir con él.
+  contact:
+    name: Renzo Alexander Munayco Vivanco
+    email: renzomunayco1@gmail.com
+
+servers:
+  - url: https://{host}/api/v1
+    description: Entorno de validación
+    variables:
+      host:
+        default: localhost:8000
+
+tags:
+  - name: Autenticación
+    description: Inicio de sesión del administrador.
+  - name: Catálogo
+    description: Productos, variedades, mercados y modos de desplazamiento.
+  - name: Precios y predicciones
+    description: Precio vigente, evolución histórica y pronósticos.
+  - name: Comparación
+    description: Costo total de compra, recomendación e indicadores de uso.
+  - name: Administración
+    description: Carga de datos, mercados, tarifas y modelo predictivo.
+
+paths:
+
+  /sesiones:
+    post:
+      tags: [Autenticación]
+      operationId: crearSesion
+      summary: Inicia sesión y devuelve el token
+      description: >
+        Verifica las credenciales del administrador y devuelve un token con ocho horas de
+        vigencia (RNF001). Ante credenciales incorrectas responde 401 con el mismo mensaje
+        exista o no el correo, para no revelar qué correos están registrados.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SesionCrear'
+      responses:
+        '201':
+          description: Sesión creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SesionToken'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+
+  /cargas:
+    post:
+      tags: [Administración]
+      operationId: crearCarga
+      summary: Sube el archivo de precios, lo valida y devuelve el resumen
+      description: >
+        Valida la estructura del archivo y cada registro, y devuelve el resumen de la carga.
+        No guarda los precios: la carga queda en estado pendiente hasta que el administrador
+        la confirme (CU01, paso 11).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [archivo, fuente]
+              properties:
+                archivo:
+                  type: string
+                  format: binary
+                  description: Archivo .xlsx exportado del SISAP
+                fuente:
+                  type: string
+                  enum: [SISAP minorista, SISAP mayorista, precios por mercado]
+      responses:
+        '201':
+          description: Archivo validado; carga en estado pendiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CargaResumen'
+        '400':
+          $ref: '#/components/responses/PeticionMalformada'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '409':
+          description: El archivo ya fue cargado antes; su huella coincide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Ningún registro resultó válido (CU01, excepción EX3)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags: [Administración]
+      operationId: listarCargas
+      summary: Historial de cargas
+      parameters:
+        - name: limite
+          in: query
+          required: false
+          description: Cantidad máxima de cargas a devolver
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Historial de cargas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CargaResumen'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+
+  /cargas/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdRuta'
+    get:
+      tags: [Administración]
+      operationId: obtenerCarga
+      summary: Detalle de la carga con el desglose de rechazos
+      responses:
+        '200':
+          description: Detalle de la carga
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CargaResumen'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+    patch:
+      tags: [Administración]
+      operationId: resolverCarga
+      summary: Confirma o descarta la carga pendiente
+      description: >
+        Al confirmar, los precios válidos se guardan con su fuente y su fecha de carga
+        (RNF010). Al descartar, no se guarda nada. Una carga se resuelve una sola vez.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CargaEstado'
+      responses:
+        '200':
+          description: Carga resuelta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CargaConfirmada'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          description: La carga ya fue confirmada o descartada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /productos:
+    get:
+      tags: [Catálogo]
+      operationId: listarProductos
+      summary: Catálogo de productos activos
+      security: []
+      parameters:
+        - name: buscar
+          in: query
+          required: false
+          description: Filtra por coincidencia parcial en el nombre
+          schema:
+            type: string
+            maxLength: 120
+      responses:
+        '200':
+          description: Productos activos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Producto'
+
+  /productos/{id}/variedades:
+    parameters:
+      - $ref: '#/components/parameters/IdRuta'
+    get:
+      tags: [Catálogo]
+      operationId: listarVariedadesDeProducto
+      summary: Variedades activas de un producto
+      security: []
+      responses:
+        '200':
+          description: Variedades del producto
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Variedad'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+  /mercados:
+    get:
+      tags: [Catálogo]
+      operationId: listarMercados
+      summary: Mercados activos
+      description: Los mercados desactivados no se listan nunca (RN11).
+      security: []
+      parameters:
+        - name: distrito
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 80
+      responses:
+        '200':
+          description: Mercados activos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mercado'
+    post:
+      tags: [Administración]
+      operationId: crearMercado
+      summary: Registra un mercado minorista
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MercadoCrear'
+      responses:
+        '201':
+          description: Mercado registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mercado'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '409':
+          description: Ya existe un mercado con ese nombre en ese distrito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+
+  /mercados/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdRuta'
+    get:
+      tags: [Catálogo]
+      operationId: obtenerMercado
+      summary: Detalle de un mercado
+      security: []
+      responses:
+        '200':
+          description: Detalle del mercado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mercado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+    patch:
+      tags: [Administración]
+      operationId: actualizarMercado
+      summary: Modifica o desactiva un mercado
+      description: >
+        Desactivar es enviar "activo" en falso. No existe operación de borrado: el RN11 obliga
+        a conservar el historial de precios del mercado (AD12).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MercadoActualizar'
+      responses:
+        '200':
+          description: Mercado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mercado'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+
+  /modos-desplazamiento:
+    get:
+      tags: [Catálogo]
+      operationId: listarModosDesplazamiento
+      summary: Modos de desplazamiento disponibles
+      security: []
+      responses:
+        '200':
+          description: Modos activos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModoDesplazamiento'
+
+  /tarifas:
+    get:
+      tags: [Administración]
+      operationId: listarTarifas
+      summary: Tarifas vigentes e históricas
+      parameters:
+        - name: vigentes
+          in: query
+          required: false
+          description: Si es verdadero, devuelve solo las tarifas sin fecha de cierre
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Tarifas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tarifa'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+    post:
+      tags: [Administración]
+      operationId: crearTarifa
+      summary: Registra una nueva vigencia y cierra la anterior
+      description: >
+        Las vigencias se suceden, no se editan: no existe PUT ni PATCH sobre una tarifa,
+        porque editarla haría irreproducible el cálculo de comparaciones anteriores (AD13).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TarifaCrear'
+      responses:
+        '201':
+          description: Tarifa registrada; la anterior quedó cerrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tarifa'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '409':
+          description: La vigencia se solapa con una tarifa existente del mismo modo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+
+  /variedades/{id}/precios:
+    parameters:
+      - $ref: '#/components/parameters/IdRuta'
+    get:
+      tags: [Precios y predicciones]
+      operationId: obtenerPreciosDeVariedad
+      summary: Precio vigente de la variedad en cada mercado activo
+      description: El precio vigente es el del registro más reciente (RN03).
+      security: []
+      responses:
+        '200':
+          description: Precios vigentes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrecioVigente'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+  /variedades/{id}/evolucion:
+    parameters:
+      - $ref: '#/components/parameters/IdRuta'
+    get:
+      tags: [Precios y predicciones]
+      operationId: obtenerEvolucionDeVariedad
+      summary: Historial, pronóstico, tendencia y factores de explicación
+      description: >
+        Resuelve en una sola llamada el R9 y el R10, para no poner en riesgo los 2 segundos
+        del RNF011. El campo fecha_ultimo_dato es la fecha del último precio oficial que entró
+        al cálculo, no la fecha en que se ejecutó el modelo.
+      security: []
+      parameters:
+        - name: semanas
+          in: query
+          required: false
+          description: Semanas de historial; por defecto 12 (RN04)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 104
+            default: 12
+      responses:
+        '200':
+          description: Evolución de la variedad
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evolucion'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+  /predicciones:
+    post:
+      tags: [Administración]
+      operationId: generarPredicciones
+      summary: Ejecuta el motor de inferencia por lotes
+      description: >
+        Genera los pronósticos de una y dos semanas (RN01) de todas las variedades activas,
+        con la versión del modelo marcada como vigente. Las predicciones anteriores se
+        conservan marcadas como no vigentes (RNF009).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrediccionCrear'
+      responses:
+        '201':
+          description: Predicciones generadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrediccionResultado'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '409':
+          description: No hay ninguna versión del modelo marcada como vigente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+
+  /modelos:
+    get:
+      tags: [Administración]
+      operationId: listarModelos
+      summary: Versiones registradas del modelo y sus métricas
+      responses:
+        '200':
+          description: Versiones registradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModeloVersion'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+    post:
+      tags: [Administración]
+      operationId: registrarModelo
+      summary: Registra una versión entrenada con sus métricas
+      description: >
+        Las métricas se envían en el mismo cuerpo porque una versión sin métricas no es
+        utilizable y separarlas permitiría estados inconsistentes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModeloCrear'
+      responses:
+        '201':
+          description: Versión registrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModeloVersion'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '409':
+          description: Ya existe una versión con ese nombre de archivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+
+  /modelos/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdRuta'
+    patch:
+      tags: [Administración]
+      operationId: marcarModeloVigente
+      summary: Marca una versión del modelo como vigente
+      description: >
+        La base de datos es la única fuente de verdad sobre qué versión está en uso (RNF015).
+        Marcar una versión desmarca automáticamente la anterior.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModeloActualizar'
+      responses:
+        '200':
+          description: Versión marcada como vigente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModeloVersion'
+        '401':
+          $ref: '#/components/responses/NoAutenticado'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+
+  /comparaciones:
+    post:
+      tags: [Comparación]
+      operationId: crearComparacion
+      summary: Calcula el costo total por mercado cercano y la recomendación
+      description: >
+        Endpoint central del sistema: resuelve los requisitos R12 al R16 en una sola
+        operación. Si el servicio de rutas no responde en 3 segundos, la respuesta sigue
+        siendo 201 con distancia_aproximada en verdadero: el RNF008 ordena degradar, no
+        fallar.
+
+        El cuerpo contiene la ubicación del consumidor, de modo que no debe registrarse en la
+        bitácora del servidor (RNF003).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComparacionCrear'
+      responses:
+        '201':
+          description: Comparación calculada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComparacionResultado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+        '429':
+          description: Se superó el límite de peticiones que protege la cuota del servicio de rutas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /indicadores-uso:
+    post:
+      tags: [Comparación]
+      operationId: registrarIndicadorUso
+      summary: Registra de forma anónima la elección del consumidor
+      description: >
+        El cuerpo no contiene ningún dato que identifique al consumidor (RN12, RNF003). Los
+        montos son los que el propio servidor devolvió en la comparación momentos antes
+        (AD11). El ahorro neto no se envía: lo calcula la base de datos.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndicadorCrear'
+      responses:
+        '201':
+          description: Indicador registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndicadorCreado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
+
+security:
+  - bearerAuth: []
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token obtenido en POST /sesiones. Vigencia de ocho horas (RNF001).
+
+  parameters:
+    IdRuta:
+      name: id
+      in: path
+      required: true
+      description: Identificador del recurso
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+
+  responses:
+    PeticionMalformada:
+      description: La petición está malformada y no se puede interpretar
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NoAutenticado:
+      description: Falta el token, es inválido o expiró
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NoEncontrado:
+      description: El recurso no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NoProcesable:
+      description: Los campos se interpretan bien pero su contenido no es válido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [codigo, mensaje]
+          properties:
+            codigo:
+              type: string
+              description: Identificador estable del error, comparable por la aplicación
+              example: TARIFA_SOLAPADA
+            mensaje:
+              type: string
+              description: Texto que se muestra al usuario
+              example: Ya existe una tarifa vigente para ese modo en esa fecha.
+            detalles:
+              type: array
+              items:
+                $ref: '#/components/schemas/DetalleError'
+
+    DetalleError:
+      type: object
+      properties:
+        campo:
+          type: string
+          example: vigente_desde
+        problema:
+          type: string
+          example: se solapa con la tarifa 4
+
+    SesionCrear:
+      type: object
+      required: [correo, contrasena]
+      properties:
+        correo:
+          type: string
+          format: email
+          maxLength: 120
+          example: admin@tesis.unmsm.edu.pe
+        contrasena:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+
+    SesionToken:
+      type: object
+      required: [token, tipo, expira_en, usuario]
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+        tipo:
+          type: string
+          enum: [Bearer]
+        expira_en:
+          type: string
+          format: date-time
+        usuario:
+          $ref: '#/components/schemas/UsuarioResumen'
+
+    UsuarioResumen:
+      type: object
+      properties:
+        nombre:
+          type: string
+          example: Renzo Munayco
+        rol:
+          type: string
+          enum: [administrador]
+
+    Periodo:
+      type: object
+      properties:
+        desde:
+          type: string
+          format: date
+        hasta:
+          type: string
+          format: date
+
+    Rechazo:
+      type: object
+      required: [motivo, cantidad]
+      properties:
+        motivo:
+          type: string
+          enum:
+            - duplicado
+            - dato faltante
+            - precio no válido
+            - unidad desconocida
+            - fecha fuera de rango
+        cantidad:
+          type: integer
+          minimum: 1
+
+    CatalogoNuevo:
+      type: object
+      description: Productos y variedades incorporados por esta carga (CU01, paso 10)
+      properties:
+        productos:
+          type: array
+          items:
+            type: string
+        variedades:
+          type: array
+          items:
+            type: string
+
+    CargaResumen:
+      type: object
+      required: [id_carga_archivo, estado, nombre_archivo, registros_validos, registros_rechazados]
+      properties:
+        id_carga_archivo:
+          type: integer
+          format: int64
+        estado:
+          type: string
+          enum: [pendiente, confirmada, descartada]
+        nombre_archivo:
+          type: string
+          example: sisap_minorista_2026-09.xlsx
+        fuente:
+          type: string
+          enum: [SISAP minorista, SISAP mayorista, precios por mercado]
+        periodo:
+          $ref: '#/components/schemas/Periodo'
+        registros_validos:
+          type: integer
+          minimum: 0
+          example: 1842
+        registros_rechazados:
+          type: integer
+          minimum: 0
+          example: 97
+        rechazos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Rechazo'
+        catalogo_nuevo:
+          $ref: '#/components/schemas/CatalogoNuevo'
+
+    CargaEstado:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          enum: [confirmada, descartada]
+
+    CargaConfirmada:
+      type: object
+      properties:
+        id_carga_archivo:
+          type: integer
+          format: int64
+        estado:
+          type: string
+          enum: [confirmada, descartada]
+        precios_guardados:
+          type: integer
+          minimum: 0
+        confirmada_en:
+          type: string
+          format: date-time
+
+    Producto:
+      type: object
+      required: [id_producto, nombre]
+      properties:
+        id_producto:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+          example: Papa
+
+    Variedad:
+      type: object
+      required: [id_variedad, nombre]
+      properties:
+        id_variedad:
+          type: integer
+          format: int64
+        id_producto:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+          example: Papa blanca
+        unidad_origen:
+          type: string
+          example: kilogramo
+
+    Mercado:
+      type: object
+      required: [id_mercado, nombre, distrito, direccion, latitud, longitud]
+      properties:
+        id_mercado:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+          example: Mercado de Magdalena
+        distrito:
+          type: string
+          example: Magdalena del Mar
+        direccion:
+          type: string
+          maxLength: 160
+          example: Jr. Leoncio Prado 1200
+        latitud:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: -12.0912
+        longitud:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: -77.0712
+        horario_atencion:
+          type: string
+          maxLength: 60
+          nullable: true
+          example: 6:00 – 18:00
+        activo:
+          type: boolean
+
+    MercadoCrear:
+      type: object
+      required: [nombre, distrito, direccion, latitud, longitud]
+      properties:
+        nombre:
+          type: string
+          maxLength: 150
+        distrito:
+          type: string
+          maxLength: 80
+        direccion:
+          type: string
+          maxLength: 160
+          example: Jr. Leoncio Prado 1200
+        latitud:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitud:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        horario_atencion:
+          type: string
+          maxLength: 60
+          nullable: true
+          example: 6:00 – 18:00
+
+    MercadoActualizar:
+      type: object
+      minProperties: 1
+      description: Solo se envían los campos que cambian. "activo" en falso desactiva el mercado.
+      properties:
+        nombre:
+          type: string
+          maxLength: 150
+        distrito:
+          type: string
+          maxLength: 80
+        direccion:
+          type: string
+          maxLength: 160
+          example: Jr. Leoncio Prado 1200
+        latitud:
+          type: number
+          format: double
+        longitud:
+          type: number
+          format: double
+        horario_atencion:
+          type: string
+          maxLength: 60
+          nullable: true
+          example: 6:00 – 18:00
+        activo:
+          type: boolean
+
+    ModoDesplazamiento:
+      type: object
+      required: [id_modo_desplazamiento, nombre]
+      properties:
+        id_modo_desplazamiento:
+          type: integer
+        nombre:
+          type: string
+          enum: [a pie, transporte público, taxi, auto particular]
+        activo:
+          type: boolean
+
+    Tarifa:
+      type: object
+      required: [id_tarifa, id_modo_desplazamiento, tipo_cobro, monto, vigente_desde]
+      properties:
+        id_tarifa:
+          type: integer
+          format: int64
+        id_modo_desplazamiento:
+          type: integer
+        tipo_cobro:
+          type: string
+          enum: [fijo, por_km]
+        monto:
+          type: number
+          format: double
+          minimum: 0
+          example: 2.50
+        vigente_desde:
+          type: string
+          format: date
+        vigente_hasta:
+          type: string
+          format: date
+          nullable: true
+        tarifa_cerrada:
+          type: integer
+          format: int64
+          nullable: true
+          description: Identificador de la tarifa cuya vigencia cerró esta operación
+
+    TarifaCrear:
+      type: object
+      required: [id_modo_desplazamiento, tipo_cobro, monto, vigente_desde]
+      properties:
+        id_modo_desplazamiento:
+          type: integer
+        tipo_cobro:
+          type: string
+          enum: [fijo, por_km]
+        monto:
+          type: number
+          format: double
+          minimum: 0
+        vigente_desde:
+          type: string
+          format: date
+
+    PrecioMercadoItem:
+      type: object
+      properties:
+        id_mercado:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        precio_kg:
+          type: number
+          format: double
+          exclusiveMinimum: true
+          minimum: 0
+          example: 3.40
+        fecha:
+          type: string
+          format: date
+
+    PrecioVigente:
+      type: object
+      properties:
+        id_variedad:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        precios:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrecioMercadoItem'
+
+    PuntoHistorial:
+      type: object
+      properties:
+        fecha:
+          type: string
+          format: date
+        precio_kg:
+          type: number
+          format: double
+
+    Factor:
+      type: object
+      description: Máximo tres factores por predicción (RN05)
+      properties:
+        orden:
+          type: integer
+          minimum: 1
+          maximum: 3
+        descripcion:
+          type: string
+          maxLength: 200
+          example: El precio mayorista subió en las últimas dos semanas
+
+    Prediccion:
+      type: object
+      properties:
+        horizonte_semanas:
+          type: integer
+          enum: [1, 2]
+        fecha_objetivo:
+          type: string
+          format: date
+        precio_estimado_kg:
+          type: number
+          format: double
+        tendencia:
+          type: string
+          # En OpenAPI 3.0 un enum nullable debe listar null, o el valor nulo se rechaza.
+          enum: [sube, baja, se mantiene, null]
+          nullable: true
+          description: >
+            Salida del modelo de tendencia, almacenada junto con la predicción. Nula en
+            las variedades que no tienen modelo de tendencia vigente; en ese caso la
+            interfaz informa que la dirección no está disponible.
+        confianza_tendencia:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: >
+            Probabilidad que el modelo asigna a la dirección pronosticada. Nula cuando
+            tendencia es nula; las dos van juntas o ninguna.
+        factores:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/Factor'
+
+    ModeloResumen:
+      type: object
+      properties:
+        proposito:
+          type: string
+          enum: [nivel, tendencia]
+          description: Qué salida produce esta versión
+        version:
+          type: string
+          example: xgb_2026-09-20
+        mase:
+          type: number
+          format: double
+          nullable: true
+          description: Solo en el modelo de nivel
+          example: 0.82
+        exactitud_direccional:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: Solo en el modelo de tendencia
+          example: 0.643
+
+    Evolucion:
+      type: object
+      properties:
+        id_variedad:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        fecha_ultimo_dato:
+          type: string
+          format: date
+          description: Fecha del último dato oficial utilizado (R9)
+        historial:
+          type: array
+          items:
+            $ref: '#/components/schemas/PuntoHistorial'
+        predicciones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prediccion'
+        modelos:
+          type: array
+          description: Las versiones vigentes que produjeron estas predicciones, una por propósito
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/ModeloResumen'
+
+    PrediccionCrear:
+      type: object
+      required: [fecha_ultimo_dato]
+      properties:
+        fecha_ultimo_dato:
+          type: string
+          format: date
+          description: Fecha del último precio oficial que debe entrar al cálculo
+
+    PrediccionResultado:
+      type: object
+      properties:
+        id_modelo_version:
+          type: integer
+          format: int64
+          description: Versión vigente del modelo de nivel
+        version:
+          type: string
+        id_modelo_tendencia:
+          type: integer
+          format: int64
+          nullable: true
+          description: Versión vigente del modelo de tendencia
+        version_tendencia:
+          type: string
+          nullable: true
+        predicciones_generadas:
+          type: integer
+          minimum: 0
+        variedades_sin_datos:
+          type: integer
+          minimum: 0
+        variedades_sin_tendencia:
+          type: integer
+          minimum: 0
+          description: Variedades a las que se generó precio pero no dirección
+        generado_en:
+          type: string
+          format: date-time
+
+    Metrica:
+      type: object
+      required: [horizonte_semanas]
+      properties:
+        id_variedad:
+          type: integer
+          format: int64
+          nullable: true
+          description: Nulo indica que la métrica es global del modelo
+        horizonte_semanas:
+          type: integer
+          enum: [1, 2]
+        mae:
+          type: number
+          format: double
+          minimum: 0
+        wape:
+          type: number
+          format: double
+          minimum: 0
+        mase:
+          type: number
+          format: double
+          minimum: 0
+          description: >
+            Métrica comparativa entre variedades. No es el criterio de aceptación: el
+            propio pronóstico ingenuo obtiene un MASE menor que 1 en nueve de las diez
+            variedades, así que ese umbral no distingue nada.
+        exactitud_direccional:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        p_valor_direccional:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: >
+            Prueba binomial de una cola de la exactitud direccional frente al 50 %. Es
+            la mitad del criterio del RNF006 que corresponde al modelo de tendencia.
+        p_valor_diebold_mariano:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: >
+            Prueba de Diebold-Mariano del MAE frente al pronóstico ingenuo, calculada
+            por variedad. Es la otra mitad del criterio, la del modelo de nivel.
+
+    ModeloCrear:
+      type: object
+      required: [nombre_archivo, algoritmo, proposito, fecha_entrenamiento, datos_desde, datos_hasta, metricas]
+      properties:
+        nombre_archivo:
+          type: string
+          example: xgb_2026-09-20.joblib
+        algoritmo:
+          type: string
+          example: XGBoost
+        proposito:
+          type: string
+          enum: [nivel, tendencia]
+          description: Qué salida produce. Solo puede haber una versión vigente de cada propósito
+        fecha_entrenamiento:
+          type: string
+          format: date-time
+        datos_desde:
+          type: string
+          format: date
+        datos_hasta:
+          type: string
+          format: date
+        metricas:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Metrica'
+
+    ModeloVersion:
+      type: object
+      properties:
+        id_modelo_version:
+          type: integer
+          format: int64
+        nombre_archivo:
+          type: string
+        algoritmo:
+          type: string
+        proposito:
+          type: string
+          enum: [nivel, tendencia]
+        fecha_entrenamiento:
+          type: string
+          format: date-time
+        datos_desde:
+          type: string
+          format: date
+        datos_hasta:
+          type: string
+          format: date
+        vigente:
+          type: boolean
+        metricas:
+          type: array
+          items:
+            $ref: '#/components/schemas/Metrica'
+
+    ModeloActualizar:
+      type: object
+      required: [vigente]
+      properties:
+        vigente:
+          type: boolean
+
+    Origen:
+      type: object
+      required: [latitud, longitud]
+      description: Ubicación del consumidor. No se almacena en el servidor (RNF003).
+      properties:
+        latitud:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: -12.0464
+        longitud:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: -77.0428
+
+    ItemLista:
+      type: object
+      required: [id_variedad, cantidad_kg]
+      properties:
+        id_variedad:
+          type: integer
+          format: int64
+        cantidad_kg:
+          type: number
+          format: double
+          exclusiveMinimum: true
+          minimum: 0
+          example: 2.0
+
+    ComparacionCrear:
+      type: object
+      required: [origen, id_modo_desplazamiento, items]
+      properties:
+        origen:
+          $ref: '#/components/schemas/Origen'
+        id_modo_desplazamiento:
+          type: integer
+        radio_km:
+          type: number
+          format: double
+          minimum: 0.5
+          maximum: 20
+          default: 3
+          description: Radio de búsqueda; por defecto 3 km (RN06)
+        id_mercado_habitual:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            Si no se envía, la referencia del ahorro pasa a ser el promedio de los mercados
+            cercanos (RN08).
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ItemLista'
+
+    Referencia:
+      type: object
+      properties:
+        tipo:
+          type: string
+          enum: [mercado habitual, promedio de cercanos]
+        id_mercado:
+          type: integer
+          format: int64
+          nullable: true
+        costo_total:
+          type: number
+          format: double
+
+    MercadoComparado:
+      type: object
+      properties:
+        id_mercado:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        distancia_km:
+          type: number
+          format: double
+        duracion_min:
+          type: integer
+        costo_productos:
+          type: number
+          format: double
+        costo_desplazamiento:
+          type: number
+          format: double
+          description: Ya considera ida y vuelta (RN07)
+        costo_total:
+          type: number
+          format: double
+        ahorro_neto:
+          type: number
+          format: double
+        sin_precio:
+          type: array
+          description: Variedades sin precio vigente en ese mercado
+          items:
+            type: integer
+            format: int64
+
+    Recomendacion:
+      type: object
+      properties:
+        disponible:
+          type: boolean
+          description: >
+            Falso cuando ningún producto de la lista tiene tendencia pronosticada; en
+            ese caso solo se devuelve la comparación por costo total (CU06, EX1).
+        postergar:
+          type: boolean
+          nullable: true
+        motivo:
+          type: string
+          example: El costo estimado para la próxima semana es 6,2 % menor.
+        ahorro_estimado:
+          type: number
+          format: double
+          nullable: true
+        productos_sin_tendencia:
+          type: integer
+          minimum: 0
+          description: Productos de la lista excluidos del cálculo por no tener dirección pronosticada
+
+    ComparacionResultado:
+      type: object
+      properties:
+        generado_en:
+          type: string
+          format: date-time
+        distancia_aproximada:
+          type: boolean
+          description: >
+            Verdadero cuando el servicio de rutas no respondió en 3 segundos y la distancia se
+            estimó en línea recta (RNF008).
+        referencia:
+          $ref: '#/components/schemas/Referencia'
+        mercados:
+          type: array
+          items:
+            $ref: '#/components/schemas/MercadoComparado'
+        recomendacion:
+          $ref: '#/components/schemas/Recomendacion'
+
+    IndicadorCrear:
+      type: object
+      required: [id_mercado, segundos_hasta_eleccion, tipo_referencia, costo_elegido, costo_referencia]
+      properties:
+        id_mercado:
+          type: integer
+          format: int64
+          description: Mercado elegido por el consumidor
+        segundos_hasta_eleccion:
+          type: integer
+          minimum: 0
+        tipo_referencia:
+          type: string
+          enum: [mercado habitual, promedio de cercanos]
+        costo_elegido:
+          type: number
+          format: double
+          minimum: 0
+        costo_referencia:
+          type: number
+          format: double
+          minimum: 0
+
+    IndicadorCreado:
+      type: object
+      properties:
+        id_indicador_uso:
+          type: integer
+          format: int64
+        ocurrido_en:
+          type: string
+          format: date-time
+        ahorro_neto:
+          type: number
+          format: double
+          description: Columna generada en la base de datos
