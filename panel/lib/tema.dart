@@ -29,6 +29,7 @@ class Colores {
 }
 
 class Radios {
+  static const r8 = 8.0;
   static const r12 = 12.0;
   static const r14 = 14.0;
   static const r16 = 16.0;
@@ -61,6 +62,8 @@ class Textos {
       _inter(13, FontWeight.w400, 18, c);
   static TextStyle etiquetaM([Color c = Colores.textoMedio]) =>
       _inter(13, FontWeight.w500, 18, c);
+  static TextStyle etiquetaS([Color c = Colores.textoMedio]) =>
+      _inter(11, FontWeight.w500, 16, c);
   static TextStyle botonM([Color c = Colores.textoInverso]) =>
       _inter(15, FontWeight.w600, 20, c);
   static TextStyle numeroXL([Color c = Colores.textoFuerte]) =>

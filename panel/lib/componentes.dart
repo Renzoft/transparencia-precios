@@ -267,3 +267,14 @@ String fecha(DateTime d) =>
 
 /// Primera letra en mayúscula: «duplicado» -> «Duplicado».
 String capitalizar(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+/// Para buscar sin que importen tildes ni mayúsculas: «Jesús María» -> «jesus maria».
+String sinTildes(String s) {
+  const con = 'áéíóúüñ', sin = 'aeiouun';
+  final b = StringBuffer();
+  for (final c in s.toLowerCase().split('')) {
+    final i = con.indexOf(c);
+    b.write(i < 0 ? c : sin[i]);
+  }
+  return b.toString().trim();
+}

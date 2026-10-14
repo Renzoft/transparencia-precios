@@ -1,5 +1,5 @@
-// Cliente de la API REST (openapi.yaml). Solo cubre lo que usa el CU01: iniciar sesión
-// y las cuatro operaciones de /cargas.
+// Cliente de la API REST (openapi.yaml). Cubre lo que usa el panel: iniciar sesión, las
+// operaciones de /cargas (CU01) y las de /mercados (CU02).
 //
 // El token se guarda solo en memoria, nunca en el almacenamiento del navegador: si se
 // recarga la página hay que volver a entrar, pero un token no queda guardado donde otro
@@ -15,12 +15,14 @@ const urlApi = String.fromEnvironment('API_URL', defaultValue: 'http://localhost
 
 /// Un error de la API, con el formato del contrato: {"error": {codigo, mensaje, detalles}}.
 class ErrorApi implements Exception {
-  ErrorApi(this.estado, this.codigo, this.mensaje, [this.detalles = const []]);
+  ErrorApi(this.estado, this.codigo, this.mensaje,
+      [this.detalles = const [], this.problemas = const {}]);
 
   final int estado;
   final String codigo;
   final String mensaje;
-  final List<String> detalles;      // «campo: problema», ya listo para mostrar
+  final List<String> detalles;           // «campo: problema», ya listo para mostrar
+  final Map<String, String> problemas;   // campo -> problema, para señalar cada campo
 
   bool get sesionVencida => estado == 401;
 
@@ -33,7 +35,12 @@ class ErrorApi implements Exception {
               ? '${d['problema']}'
               : '${d['campo']}: ${d['problema']}'
       ];
-      return ErrorApi(r.statusCode, e['codigo'] as String, e['mensaje'] as String, detalles);
+      final problemas = {
+        for (final d in (e['detalles'] as List? ?? const []))
+          '${(d as Map)['campo']}': '${d['problema']}'
+      };
+      return ErrorApi(r.statusCode, e['codigo'] as String, e['mensaje'] as String,
+          detalles, problemas);
     } catch (_) {
       return ErrorApi(r.statusCode, 'RESPUESTA_INESPERADA',
           'El servidor respondió algo inesperado (código ${r.statusCode}).');
@@ -109,6 +116,39 @@ class CargaResuelta {
   CargaResuelta(this.estado, this.preciosGuardados);
   final String estado;
   final int preciosGuardados;
+}
+
+class Mercado {
+  Mercado({
+    required this.id,
+    required this.nombre,
+    required this.distrito,
+    required this.direccion,
+    required this.latitud,
+    required this.longitud,
+    required this.activo,
+    this.horario,
+  });
+
+  final int id;
+  final String nombre;
+  final String distrito;
+  final String direccion;
+  final double latitud;
+  final double longitud;
+  final String? horario;
+  final bool activo;
+
+  factory Mercado.desdeJson(Map<String, dynamic> j) => Mercado(
+        id: j['id_mercado'] as int,
+        nombre: j['nombre'] as String,
+        distrito: j['distrito'] as String,
+        direccion: j['direccion'] as String,
+        latitud: (j['latitud'] as num).toDouble(),
+        longitud: (j['longitud'] as num).toDouble(),
+        horario: j['horario_atencion'] as String?,
+        activo: j['activo'] as bool,
+      );
 }
 
 class ClienteApi {
@@ -192,5 +232,28 @@ class ClienteApi {
         body: jsonEncode({'estado': estado})));
     final j = _json(r) as Map<String, dynamic>;
     return CargaResuelta(j['estado'] as String, j['precios_guardados'] as int);
+  }
+
+  /// GET /mercados con los desactivados: el administrador ve todos (CU02, paso 2).
+  Future<List<Mercado>> listarMercados() async {
+    final r = await _enviar(() => _http.get(
+        _url('/mercados', {'incluir_inactivos': 'true'}), headers: _cabeceras));
+    return [for (final m in _json(r) as List) Mercado.desdeJson(m as Map<String, dynamic>)];
+  }
+
+  /// POST /mercados (CU02, pasos 5 a 9).
+  Future<Mercado> crearMercado(Map<String, Object?> datos) async {
+    final r = await _enviar(() => _http.post(_url('/mercados'),
+        headers: {..._cabeceras, 'Content-Type': 'application/json'},
+        body: jsonEncode(datos)));
+    return Mercado.desdeJson(_json(r) as Map<String, dynamic>);
+  }
+
+  /// PATCH /mercados/{id}: solo los campos que cambian; {"activo": false} desactiva.
+  Future<Mercado> actualizarMercado(int id, Map<String, Object?> cambios) async {
+    final r = await _enviar(() => _http.patch(_url('/mercados/$id'),
+        headers: {..._cabeceras, 'Content-Type': 'application/json'},
+        body: jsonEncode(cambios)));
+    return Mercado.desdeJson(_json(r) as Map<String, dynamic>);
   }
 }

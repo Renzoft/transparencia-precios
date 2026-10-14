@@ -1,8 +1,7 @@
 // A3 · Menú de administración (CU01, paso 4).
 //
-// Las opciones de Mercados y tarifas, Predicciones y Desempeño del modelo aparecen como
-// en el prototipo, pero sin acción: se construyen en las actividades de implementación
-// del CU02 y del CU03.
+// Las opciones de Predicciones y Desempeño del modelo aparecen como en el prototipo, pero
+// sin acción: se construyen en la actividad de implementación del CU03.
 
 import 'package:flutter/material.dart';
 
@@ -11,6 +10,7 @@ import '../componentes.dart';
 import '../tema.dart';
 import 'carga_precios.dart';
 import 'inicio_sesion.dart';
+import 'mercados.dart';
 
 class PantallaMenu extends StatefulWidget {
   const PantallaMenu({super.key, required this.api});
@@ -75,10 +75,12 @@ class _EstadoMenu extends State<PantallaMenu> {
           descripcion: 'Subir el archivo del SISAP y validarlo',
           alPresionar: _abrirCarga,
         ),
-        const _Opcion(
+        _Opcion(
           icono: Icons.storefront_outlined,
           titulo: 'Mercados y tarifas',
           descripcion: 'Registrar mercados y actualizar tarifas',
+          alPresionar: () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => PantallaMercados(api: widget.api))),
         ),
         const _Opcion(
           icono: Icons.trending_up,
