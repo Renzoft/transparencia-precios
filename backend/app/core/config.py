@@ -27,6 +27,11 @@ class Configuracion(BaseSettings):
     # SecretStr evita que la contraseña aparezca si alguien imprime la configuración.
     pgpassword: SecretStr
 
+    # Orígenes web autorizados a llamar a la API desde el navegador (CORS), separados por
+    # comas. Es el dominio donde se publique el panel. En desarrollo, además, se admite
+    # cualquier puerto de localhost, porque Flutter levanta el panel en un puerto propio.
+    cors_origenes: str = ""
+
     # Sesión del administrador (RNF001): token firmado con vigencia de ocho horas.
     jwt_secreto: SecretStr
     jwt_horas: int = 8
@@ -38,6 +43,10 @@ class Configuracion(BaseSettings):
         if len(v.get_secret_value()) < 32:
             raise ValueError("JWT_SECRETO debe tener al menos 32 caracteres")
         return v
+
+    @property
+    def lista_cors(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.cors_origenes.split(",") if o.strip()]
 
 
 configuracion = Configuracion()
