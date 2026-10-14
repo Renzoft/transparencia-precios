@@ -1,8 +1,8 @@
 """Área de seguridad y carga de datos: usuario, carga_archivo, carga_rechazo."""
 from datetime import datetime
 
-from sqlalchemy import (CHAR, BigInteger, Boolean, DateTime, ForeignKey, Integer,
-                        LargeBinary, String, UniqueConstraint, text)
+from sqlalchemy import (CHAR, BigInteger, Boolean, DateTime, ForeignKey, Index,
+                        Integer, LargeBinary, String, UniqueConstraint, text)
 from sqlalchemy.orm import Mapped, deferred, mapped_column
 
 from app.modelos.base import Base
@@ -24,7 +24,11 @@ class Usuario(Base):
 class CargaArchivo(Base):
     """Cada archivo cargado. El hash impide cargar dos veces el mismo."""
     __tablename__ = "carga_archivo"
-    __table_args__ = (UniqueConstraint("hash_archivo", name="uq_carga_hash"),)
+    __table_args__ = (
+        # Huella única salvo en las cargas descartadas, que no bloquean volver a subirla.
+        Index("uq_carga_hash", "hash_archivo", unique=True,
+              postgresql_where=text("estado <> 'descartada'")),
+    )
 
     id_carga_archivo: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     id_usuario: Mapped[int] = mapped_column(

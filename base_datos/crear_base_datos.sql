@@ -4,7 +4,7 @@
 --
 --  Gestor      : PostgreSQL 16 o superior (restricción RNF016)
 --  Codificación: UTF-8
---  Base        : 15 tablas, 100 campos, 16 claves foráneas, 7 índices
+--  Base        : 15 tablas, 100 campos, 16 claves foráneas, 8 índices
 --
 --  Requiere un rol con privilegios para crear la extensión btree_gist y el rol
 --  app_precios. Se ejecuta dentro de una base ya creada; ver scripts/instalar_bd.ps1.
@@ -55,7 +55,6 @@ CREATE TABLE carga_archivo (
     -- al archivo exacto del que salió (RNF010). Nulo en las cargas históricas iniciales,
     -- que cargar_precios.py hizo desde CSV y no desde un archivo subido.
     contenido_archivo     BYTEA         NULL,
-    CONSTRAINT uq_carga_hash    UNIQUE (hash_archivo),
     CONSTRAINT ck_carga_fuente  CHECK (fuente IN ('SISAP minorista',
                                                   'SISAP mayorista',
                                                   'precios por mercado')),
@@ -67,6 +66,12 @@ CREATE TABLE carga_archivo (
     CONSTRAINT fk_carga_usuario FOREIGN KEY (id_usuario)
         REFERENCES usuario (id_usuario) ON DELETE RESTRICT
 );
+
+-- Un archivo no se puede subir dos veces, salvo que su carga anterior se haya descartado:
+-- descartar por error no debe impedir subir el mismo archivo otra vez. Se compara la
+-- huella SHA-256 y no el nombre, porque el SISAP siempre llama «reporte.xls» a sus archivos.
+CREATE UNIQUE INDEX uq_carga_hash
+    ON carga_archivo (hash_archivo) WHERE estado <> 'descartada';
 
 -- Motivo de los registros descartados. Lo exige el paso 10 del CU01.
 CREATE TABLE carga_rechazo (

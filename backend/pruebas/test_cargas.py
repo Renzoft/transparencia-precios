@@ -158,9 +158,17 @@ def test_una_carga_se_resuelve_una_sola_vez(cliente, auth):
     r = resolver(cliente, auth, c["id_carga_archivo"], "confirmada")
     assert r.status_code == 409
     assert r.json()["error"]["codigo"] == "CARGA_YA_RESUELTA"
-    # Y el mismo archivo tampoco se puede volver a subir: su huella ya está registrada.
+    # Pero el archivo de una carga descartada sí se puede volver a subir: descartar por
+    # error no debe bloquearlo para siempre.
+    assert subir(cliente, auth, TOMATE.read_bytes()).status_code == 201
+
+
+def test_mientras_la_carga_este_pendiente_el_archivo_no_se_repite(cliente, auth):
+    primera = subir(cliente, auth, TOMATE.read_bytes()).json()
     r = subir(cliente, auth, TOMATE.read_bytes())
-    assert r.status_code == 409 and "descartada" in r.json()["error"]["mensaje"]
+    assert r.status_code == 409
+    assert "pendiente" in r.json()["error"]["mensaje"]
+    assert str(primera["id_carga_archivo"]) in r.json()["error"]["mensaje"]
 
 
 def test_al_confirmar_se_recalcula_lo_que_falta(cliente, auth, sesion_aislada):

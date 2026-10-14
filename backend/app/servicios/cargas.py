@@ -169,7 +169,9 @@ def crear_carga(sesion: Session, admin: Usuario, nombre_archivo: str, contenido:
         raise _formato_no_valido("el archivo está vacío")
 
     huella = hashlib.sha256(contenido).hexdigest()
-    previa = sesion.scalar(select(CargaArchivo).where(CargaArchivo.hash_archivo == huella))
+    # Una carga descartada no bloquea volver a subir el mismo archivo (uq_carga_hash).
+    previa = sesion.scalar(select(CargaArchivo).where(CargaArchivo.hash_archivo == huella,
+                                                      CargaArchivo.estado != "descartada"))
     if previa is not None:
         raise _ya_cargado(previa)
 
@@ -192,7 +194,8 @@ def crear_carga(sesion: Session, admin: Usuario, nombre_archivo: str, contenido:
         # Otra petición subió el mismo archivo entre la consulta de arriba y esta.
         sesion.rollback()
         raise _ya_cargado(sesion.scalar(
-            select(CargaArchivo).where(CargaArchivo.hash_archivo == huella))) from None
+            select(CargaArchivo).where(CargaArchivo.hash_archivo == huella,
+                                       CargaArchivo.estado != "descartada"))) from None
     sesion.add_all(CargaRechazo(id_carga_archivo=carga.id_carga_archivo, motivo=m,
                                 cantidad=c) for m, c in analisis.rechazos.items() if c)
     sesion.flush()
