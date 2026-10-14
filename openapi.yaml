@@ -217,6 +217,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Producto'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
 
   /productos/{id}/variedades:
     parameters:
@@ -237,6 +239,8 @@ paths:
                   $ref: '#/components/schemas/Variedad'
         '404':
           $ref: '#/components/responses/NoEncontrado'
+        '422':
+          $ref: '#/components/responses/NoProcesable'
 
   /mercados:
     get:
@@ -611,6 +615,12 @@ paths:
 
         El cuerpo contiene la ubicación del consumidor, de modo que no debe registrarse en la
         bitácora del servidor (RNF003).
+
+        Los mercados se ordenan primero por cuántos productos de la lista no tienen precio
+        en ellos y después por costo total: un mercado al que le faltan precios no puede
+        aparecer como el más barato solo porque no se le sumaron esos productos.
+        duracion_min se omite cuando la distancia es aproximada, porque la línea recta no
+        da un tiempo de viaje.
       security: []
       requestBody:
         required: true
@@ -906,6 +916,13 @@ components:
         unidad_origen:
           type: string
           example: kilogramo
+        factor_a_kg:
+          type: number
+          format: double
+          example: 1.0
+          description: >
+            Kilogramos que equivalen a una unidad de unidad_origen (RN10). La aplicación
+            multiplica por él la cantidad que indica el consumidor para enviar cantidad_kg.
 
     Mercado:
       type: object
@@ -1445,6 +1462,8 @@ components:
           type: integer
           format: int64
         nombre:
+          type: string
+        distrito:
           type: string
         distancia_km:
           type: number

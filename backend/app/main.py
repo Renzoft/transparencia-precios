@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import VERSION
 from app.core.config import configuracion
 from app.core.errores import registrar_manejadores
-from app.rutas import cargas, mercados, salud, sesiones, tarifas
+from app.rutas import (cargas, catalogo, comparaciones, mercados, salud, sesiones,
+                       tarifas)
 
 # Todos los endpoints del contrato cuelgan de este prefijo (openapi.yaml, «servers»).
 PREFIJO_API = "/api/v1"
@@ -40,6 +41,8 @@ def crear_app() -> FastAPI:
     app.include_router(cargas.router, prefix=PREFIJO_API)
     app.include_router(mercados.router, prefix=PREFIJO_API)
     app.include_router(tarifas.router, prefix=PREFIJO_API)
+    app.include_router(catalogo.router, prefix=PREFIJO_API)
+    app.include_router(comparaciones.router, prefix=PREFIJO_API)
     return app
 
 
