@@ -296,3 +296,6 @@ String abreviar(String unidad) => switch (unidad) {
 /// «2.0 kg», con un decimal como en el prototipo.
 String cantidadConUnidad(double cantidad, String unidad) =>
     '${cantidad.toStringAsFixed(1)} ${abreviar(unidad)}';
+
+/// Primera letra en mayúscula: «transporte público» -> «Transporte público».
+String capitalizar(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);

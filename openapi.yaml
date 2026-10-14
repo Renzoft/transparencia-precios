@@ -1031,6 +1031,21 @@ components:
           enum: [a pie, transporte público, taxi, auto particular]
         activo:
           type: boolean
+        tarifa:
+          type: object
+          nullable: true
+          description: >
+            La tarifa que rige hoy, para que el consumidor vea cuánto cuesta cada modo al
+            elegirlo (CU05, paso 7). Nula si el modo todavía no tiene tarifa.
+          required: [tipo_cobro, monto]
+          properties:
+            tipo_cobro:
+              type: string
+              enum: [fijo, por_km]
+            monto:
+              type: number
+              format: double
+              minimum: 0
 
     Tarifa:
       type: object

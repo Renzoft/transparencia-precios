@@ -9,6 +9,7 @@ import '../componentes.dart';
 import '../lista.dart';
 import '../tema.dart';
 import 'mi_lista.dart';
+import 'punto_de_partida.dart';
 
 class PantallaInicio extends StatefulWidget {
   const PantallaInicio({super.key, required this.api, required this.lista});
@@ -23,11 +24,16 @@ class PantallaInicio extends StatefulWidget {
 class _EstadoInicio extends State<PantallaInicio> {
   int _seccion = 1;
 
+  /// «Calcular costo total» (CU05, paso 5): lleva al punto de partida y el modo (C8).
   void _calcular() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(
-          content: Text('Próximamente: punto de partida y modo de desplazamiento.')));
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PantallaPuntoDePartida(
+              api: widget.api,
+              alCalcular: (contexto, partida) => ScaffoldMessenger.of(contexto)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(const SnackBar(
+                    content: Text('Próximamente: el costo total en cada mercado.'))),
+            )));
   }
 
   @override

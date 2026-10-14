@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.core.errores import ErrorAPI
 from app.esquemas.tarifa import ModoDesplazamiento as ModoSalida
 from app.esquemas.tarifa import Tarifa as TarifaSalida
-from app.esquemas.tarifa import TarifaCrear
+from app.esquemas.tarifa import TarifaCrear, TarifaDelModo
 from app.modelos import ModoDesplazamiento, Tarifa
 
 # Hora de Lima. El Perú no cambia de hora en verano, así que basta el desfase fijo.
@@ -54,19 +54,28 @@ def _no_valido(codigo: str, mensaje: str, campo: str, problema: str) -> ErrorAPI
 def listar_modos(sesion: Session) -> list[ModoSalida]:
     modos = sesion.scalars(select(ModoDesplazamiento).where(ModoDesplazamiento.activo)
                            .order_by(ModoDesplazamiento.id_modo_desplazamiento))
-    return [ModoSalida(id_modo_desplazamiento=m.id_modo_desplazamiento, nombre=m.nombre,
-                       activo=m.activo) for m in modos]
+    vigentes = {t.id_modo_desplazamiento: t for t in sesion.scalars(_rigen_hoy(select(Tarifa)))}
+    return [ModoSalida(
+        id_modo_desplazamiento=m.id_modo_desplazamiento, nombre=m.nombre, activo=m.activo,
+        tarifa=None if m.id_modo_desplazamiento not in vigentes else TarifaDelModo(
+            tipo_cobro=vigentes[m.id_modo_desplazamiento].tipo_cobro,
+            monto=float(vigentes[m.id_modo_desplazamiento].monto)))
+        for m in modos]
+
+
+def _rigen_hoy(consulta):
+    # Las que rigen hoy. Una tarifa programada para una fecha futura todavía no rige,
+    # y la que la precede sigue rigiendo aunque ya tenga fecha de cierre.
+    h = hoy()
+    return consulta.where(Tarifa.vigente_desde <= h,
+                          or_(Tarifa.vigente_hasta.is_(None), Tarifa.vigente_hasta > h))
 
 
 def listar(sesion: Session, vigentes: bool) -> list[TarifaSalida]:
     consulta = select(Tarifa).order_by(Tarifa.id_modo_desplazamiento,
                                        Tarifa.vigente_desde.desc())
     if vigentes:
-        # Las que rigen hoy. Una tarifa programada para una fecha futura todavía no rige,
-        # y la que la precede sigue rigiendo aunque ya tenga fecha de cierre.
-        h = hoy()
-        consulta = consulta.where(Tarifa.vigente_desde <= h,
-                                  or_(Tarifa.vigente_hasta.is_(None), Tarifa.vigente_hasta > h))
+        consulta = _rigen_hoy(consulta)
     return [_a_salida(t) for t in sesion.scalars(consulta)]
 
 

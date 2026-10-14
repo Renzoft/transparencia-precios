@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- La aplicación consulta la API por internet. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Punto de partida por GPS, previo consentimiento del consumidor (CU05, paso 6). -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <application
         android:label="Transparencia de precios"
         android:name="${applicationName}"

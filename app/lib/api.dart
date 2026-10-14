@@ -67,6 +67,24 @@ class Variedad {
       );
 }
 
+/// Un modo de desplazamiento con la tarifa que rige hoy (nula si aún no tiene).
+class ModoDesplazamiento {
+  ModoDesplazamiento(this.id, this.nombre, {this.tipoCobro, this.monto});
+
+  final int id;
+  final String nombre;
+  final String? tipoCobro;   // «fijo» o «por_km»
+  final double? monto;
+
+  bool get conTarifa => tipoCobro != null;
+
+  factory ModoDesplazamiento.desdeJson(Map<String, dynamic> j) {
+    final t = j['tarifa'] as Map?;
+    return ModoDesplazamiento(j['id_modo_desplazamiento'] as int, j['nombre'] as String,
+        tipoCobro: t?['tipo_cobro'] as String?, monto: (t?['monto'] as num?)?.toDouble());
+  }
+}
+
 class ClienteApi {
   ClienteApi({String? base, http.Client? cliente})
       : _base = (base ?? urlApi).replaceAll(RegExp(r'/+$'), ''),
@@ -103,5 +121,11 @@ class ClienteApi {
   Future<List<Variedad>> listarVariedades(int idProducto) async {
     final j = await _get(_url('/productos/$idProducto/variedades')) as List;
     return [for (final v in j) Variedad.desdeJson(v as Map<String, dynamic>)];
+  }
+
+  /// GET /modos-desplazamiento (CU05, paso 7).
+  Future<List<ModoDesplazamiento>> listarModos() async {
+    final j = await _get(_url('/modos-desplazamiento')) as List;
+    return [for (final m in j) ModoDesplazamiento.desdeJson(m as Map<String, dynamic>)];
   }
 }

@@ -14,10 +14,17 @@ MONTO_MAXIMO = 999_999.99
 Monto = Annotated[float, Field(ge=0, le=MONTO_MAXIMO, allow_inf_nan=False)]
 
 
+class TarifaDelModo(BaseModel):
+    tipo_cobro: TipoCobro
+    monto: float
+
+
 class ModoDesplazamiento(BaseModel):
     id_modo_desplazamiento: int
     nombre: NombreModo
     activo: bool
+    # La que rige hoy; nula si el modo aún no tiene tarifa (CU05, paso 7).
+    tarifa: TarifaDelModo | None = None
 
 
 class Tarifa(BaseModel):

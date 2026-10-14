@@ -205,3 +205,14 @@ def test_las_tarifas_exigen_sesion(cliente, modo):
 def test_hoy_es_la_fecha_de_lima():
     from datetime import datetime, timezone
     assert hoy() == (datetime.now(timezone.utc) - timedelta(hours=5)).date()
+
+
+def test_cada_modo_trae_la_tarifa_que_rige_hoy(cliente, auth, modo, limpio):
+    pasaje(cliente, auth, modo, monto=2.50)
+    registrar(cliente, auth, modo["taxi"], "por_km", 1.80, dia(10))      # aún no rige
+    r = cliente.get("/api/v1/modos-desplazamiento")
+    validar_respuesta("GET", "/modos-desplazamiento", r)
+    tarifas = {m["nombre"]: m["tarifa"] for m in r.json()}
+    assert tarifas["a pie"] == {"tipo_cobro": "fijo", "monto": 0.0}
+    assert tarifas["transporte público"] == {"tipo_cobro": "fijo", "monto": 2.5}
+    assert tarifas["taxi"] is None and tarifas["auto particular"] is None
